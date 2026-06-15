@@ -15,9 +15,9 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // 🔐 تم وضع بيانات الربط الحية من واقع صور مشروعك مباشرة لقاعدة البيانات
+        // 🔐 تم تحديث مفتاح الـ API بالكامل وبدون أي نقص بناءً على البيانات المرسلة
         const SUPABASE_URL = "https://wiugwyhpuhokhocttwbq.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpdWd3eWhwdWhva2hvY3R0d2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIzMTQwNzIsImV4cCI6MjA1NzkwMDA3Mn0.u_3p_vbyb9iC-y6_6-C6_6-C6_6-C6_6-C6_6-C6_6-C";
+        const SUPABASE_ANON_KEY = "sb_publishable_zzDhn9DNIAdjJLn8aNzKzA_4IapbzcL";
         
         // إنشاء اتصال بقاعدة البيانات
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -99,8 +99,12 @@
           }, []);
 
           async function fetchBookings() {
-            const { data, error } = await supabaseClient.from('bookings').select('*');
-            if (!error && data) setBookings(data);
+            try {
+              const { data, error } = await supabaseClient.from('bookings').select('*');
+              if (!error && data) setBookings(data);
+            } catch (e) {
+              console.error(e);
+            }
             setLoading(false);
           }
 
@@ -292,15 +296,15 @@
                     <h2 style={S.modalTitle}>📋 طلب حجز جديد</h2>
                     <div style={S.formGroup}>
                       <label style={S.label}>الاسم</label>
-                      <input onChange={e => setForm({ ...form, name: e.target.value })} style={S.input} />
+                      <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={S.input} />
                     </div>
                     <div style={S.formGroup}>
                       <label style={S.label}>رقم الواتساب</label>
-                      <input onChange={e => setForm({ ...form, phone: e.target.value })} style={S.input} />
+                      <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={S.input} />
                     </div>
                     <div style={S.formGroup}>
                       <label style={S.label}>المدة</label>
-                      <select onChange={e => setForm({ ...form, duration: e.target.value })} style={S.input}>
+                      <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={S.input}>
                         <option value="1">ساعة واحدة</option>
                         <option value="2">ساعتين</option>
                       </select>
