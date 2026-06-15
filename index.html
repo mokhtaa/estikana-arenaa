@@ -20,16 +20,32 @@
         const SUPABASE_ANON_KEY = "sb_publishable_zzDhn9DNIAdjJLn8aNzKzA_4IapbzcL";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // ⏰ مواعيد الحجوزات بنظام 12 ساعة من 1 ظهراً إلى 12 مساءً
         const TIME_SLOTS = [
-          "13:00", "14:00", "15:00", "16:00", "17:00", "18:00",
-          "19:00", "20:00", "21:00", "22:00", "23:00", "24:00"
+          "1:00 ظهراً", "2:00 ظهراً", "3:00 عصراً", "4:00 عصراً", 
+          "5:00 مساءً", "6:00 مساءً", "7:00 مساءً", "8:00 مساءً", 
+          "9:00 مساءً", "10:00 مساءً", "11:00 مساءً", "12:00 مساءً"
         ];
 
         const FIELD_NAME = "استكانه أرينا";
 
-        function getPriceForSlot(timeStr) {
+        // دالة تحويل التنسيق العربي إلى ساعة رقمية بنظام 24 ساعة للحسابات الداخلية والتحقق من الوقت الماضي
+        function parseTo24Hour(timeStr) {
           const hour = parseInt(timeStr.split(":")[0]);
-          return hour >= 13 && hour < 16 ? 100 : 150;
+          if (timeStr.includes("ظهراً") || timeStr.includes("عصراً")) {
+            return hour; // الساعات 1، 2، 3، 4 تبقى كما هي في النهار
+          }
+          if (timeStr.includes("مساءً")) {
+            return hour === 12 ? 24 : hour + 12; // تحويل الساعات من 5 لـ 12 إلى نظام 24
+          }
+          return hour;
+        }
+
+        // حساب السعر بناءً على الموعد الجديد
+        function getPriceForSlot(timeStr) {
+          const hour24 = parseTo24Hour(timeStr);
+          // من 1 ظهراً (13) إلى قبل 4 عصراً (16) بـ 100 جنيه، والباقي بـ 150 جنيه
+          return hour24 >= 13 && hour24 < 16 ? 100 : 150;
         }
 
         function calculateBookingPrice(startTime, duration) {
@@ -110,8 +126,8 @@
             if (dateStr !== todayStr()) return false;
             const now = new Date();
             const currentHour = now.getHours();
-            const [slotHour] = timeStr.split(":").map(Number);
-            return slotHour <= currentHour;
+            const slotHour24 = parseTo24Hour(timeStr);
+            return slotHour24 <= currentHour;
           }
 
           const dayBookings = bookings.filter(b => b.date === selectedDate && b.status !== "cancelled");
@@ -351,7 +367,7 @@
 
                           {adminTab === "pending" && (pendingList.length === 0 ? <div style={S.empty}>🎉 لا يوجد حجوزات في انتظار التأكيد لهذا اليوم</div> : pendingList.map(b => <BookingCard key={b.id} b={b} />))}
                           {adminTab === "confirmed" && (confirmedList.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مؤكدة في هذا اليوم</div> : confirmedList.map(b => <BookingCard key={b.id} b={b} />))}
-                          {adminTab === "all" && (adminDayAll.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مسجلة في هذا اليوم</div> : [...adminDayAll].sort((a, b) => a.time.localeCompare(b.time)).map(b => <BookingCard key={b.id} b={b} />))}
+                          {adminTab === "all" && (adminDayAll.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مسجلة في هذا اليوم</div> : [...adminDayAll].sort((a, b) => parseTo24Hour(a.time) - parseTo24Hour(b.time)).map(b => <BookingCard key={b.id} b={b} />))}
 
                           {adminTab === "report" && (
                             <>
@@ -383,7 +399,7 @@
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {reportBookings.map((b, i) => (
+                                        {[...reportBookings].sort((a, b) => a.date.localeCompare(b.date) || parseTo24Hour(a.time) - parseTo24Hour(b.time)).map((b, i) => (
                                           <tr key={b.id} style={{ background: i % 2 === 0 ? "#0f172a" : "#1a2332", cursor: "pointer" }} onClick={() => setDetailModal(b)}>
                                             <td style={S.td}>{b.name}</td>
                                             <td style={S.td}>{b.date}</td>
@@ -408,7 +424,7 @@
                 )}
               </div>
 
-              {/* 🌟 تذييل الصفحة الأنيق (Footer) بتوقيعك كمطور للموقع */}
+              {/* 🌟 تذييل الصفحة بتوقيعك كمطور للموقع */}
               <footer style={S.footer}>
                 <div>جميع الحقوق محفوظة لملعب {FIELD_NAME} &copy; {new Date().getFullYear()}</div>
                 <div style={{ marginTop: 4, fontSize: 13, color: "#94a3b8" }}>
@@ -519,7 +535,7 @@
           slot:           { padding: "12px 8px", borderRadius: 10, textAlign: "center", transition: "transform 0.1s" },
           slotFree:       { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80", cursor: "pointer" },
           slotBooked:     { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", cursor: "not-allowed", opacity: 0.7 },
-          slotTime:       { display: "block", fontWeight: 700, fontSize: 17 },
+          slotTime:       { display: "block", fontWeight: 700, fontSize: 15 },
           slotLabel:      { display: "block", fontSize: 11, marginTop: 3, opacity: 0.85 },
           priceNote:      { textAlign: "center", color: "#64748b", fontSize: 14, background: "#1e293b", padding: "10px", borderRadius: "8px", border: "1px solid #334155" },
           overlay:        { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 },
