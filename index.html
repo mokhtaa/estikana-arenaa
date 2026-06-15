@@ -20,12 +20,14 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // 🔐 إعدادات الربط الحية بالداتا بيز الخاصة بك
+        // 🔐 إعدادات الربط الحية بالداتا بيز الخاصة بك (مأخوذة من لقطات شاشتك)
         const SUPABASE_URL = "https://wiugwyhpuhokhocttwbq.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_zzDhn9DNIAdjJLn8aNzKzA_4IapbzcL";
+        
+        // إنشاء اتصال بقاعدة البيانات
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // مواعيد العمل من 1 ظهراً إلى 12 منتصف الليل
+        // مواعيد العمل من 1 ظهراً (13:00) إلى 12 منتصف الليل (24:00)
         const TIME_SLOTS = [
           "13:00", "14:00", "15:00", "16:00", "17:00", "18:00",
           "19:00", "20:00", "21:00", "22:00", "23:00", "24:00"
@@ -43,7 +45,6 @@
           return `${String(adjustedHour).padStart(2, '0')}:00 ${period}`;
         }
 
-        // حساب سعر الساعة (من 1 لـ 4 العصر بـ 100، ومن بعد 4 بـ 150)
         function getPriceForSlot(timeStr) {
           const hour = parseInt(timeStr.split(":")[0]);
           return hour >= 13 && hour < 16 ? 100 : 150;
@@ -93,9 +94,12 @@
           const [adminUnlocked, setAdminUnlocked] = useState(() => localStorage.getItem("estikana_admin_logged") === "true");
           const [passError, setPassError] = useState("");
           const [detailModal, setDetailModal] = useState(null);
+          const [confirmModal, setConfirmModal] = useState(null);
 
+          // جلب الحجوزات اللحظية من الداتا بيز عند فتح الصفحة
           useEffect(() => {
             fetchBookings();
+            // الاستماع للتغييرات اللحظية (Realtime)
             const channels = supabaseClient.channel('custom-all-channel')
               .on('postgres_changes', { event: '*', filter: 'table=eq.bookings' }, () => { fetchBookings(); })
               .subscribe();
@@ -103,10 +107,8 @@
           }, []);
 
           async function fetchBookings() {
-            try {
-              const { data, error } = await supabaseClient.from('bookings').select('*');
-              if (!error && data) setBookings(data);
-            } catch (e) { console.error(e); }
+            const { data, error } = await supabaseClient.from('bookings').select('*');
+            if (!error && data) setBookings(data);
             setLoading(false);
           }
 
@@ -148,9 +150,9 @@
           async function handleBook() {
             setFormError("");
             if (!form.name.trim()) { setFormError("من فضلك أدخل الاسم"); return; }
-            if (!form.phone.match(/^01[0-9]{9}$/)) { setFormError("رقم الهاتف يجب أن يكون رقم مصري صحيح (11 رقم)"); return; }
+            if (!form.phone.match(/^01[0-9]{9}$/)) { setFormError("رقم الهاتف غير صحيح"); return; }
             const dur = parseInt(form.duration);
-            if (!isSlotAvailable(modal.time, dur)) { setFormError("الموعد أو الساعة التالية محجوزة بالفعل!"); return; }
+            if (!isSlotAvailable(modal.time, dur)) { setFormError("الموعد غير متاح"); return; }
 
             const newBooking = {
               id: genId(),
@@ -166,7 +168,7 @@
 
             const { error } = await supabaseClient.from('bookings').insert([newBooking]);
             if (error) {
-              showToast("حدث خطأ أثناء إرسال الطلب للداتا بيز", "warn");
+              showToast("حدث خطأ أثناء إرسال الطلب", "warn");
             } else {
               setModal(null);
               setForm({ name: "", phone: "", duration: "1" });
@@ -178,9 +180,9 @@
           async function doConfirm(b) {
             const { error } = await supabaseClient.from('bookings').update({ status: 'confirmed' }).eq('id', b.id);
             if (!error) {
-              setDetailModal(null);
+              setConfirmModal(null);
               openWA(b.phone, buildConfirmMsg(b));
-              showToast("✅ تم تأكيد الحجز ونقل الحالة بنجاح!");
+              showToast("✅ تم تأكيد الحجز ونقل الحالة!");
               fetchBookings();
             }
           }
@@ -192,7 +194,7 @@
           }
 
           async function cancelBooking(id) {
-            if (!window.confirm("هل تريد إلغاء هذا الحجز نهائياً؟")) return;
+            if (!window.confirm("هل تريد إلغاء الحجز؟")) return;
             await supabaseClient.from('bookings').update({ status: 'cancelled' }).eq('id', id);
             setDetailModal(null);
             showToast("🚫 تم إلغاء الحجز بنجاح");
@@ -213,143 +215,123 @@
           return (
             <div class="min-h-screen flex flex-col">
               <header class="bg-slate-800 px-6 py-4 flex justify-between items-center border-b-2 border-emerald-500 shadow-xl">
-                <div class="text-2xl font-black text-emerald-400 flex items-center gap-2">⚽ {FIELD_NAME}</div>
+                <div class="text-2xl font-black text-emerald-400">⚽ {FIELD_NAME}</div>
                 {view === "admin" && adminUnlocked && (
-                  <button onClick={() => { setAdminUnlocked(false); localStorage.removeItem("estikana_admin_logged"); }} class="bg-red-700 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold transition">خروج 🚪</button>
+                  <button onClick={() => { setAdminUnlocked(false); localStorage.removeItem("estikana_admin_logged"); }} class="bg-red-700 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold">خروج 🚪</button>
                 )}
               </header>
 
               {toast.msg && (
-                <div class={`fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl font-bold text-slate-900 shadow-2xl z-50 text-center transition-all ${toast.type === "warn" ? "bg-amber-500" : "bg-emerald-400"}`}>
+                <div class={`fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl font-bold text-slate-900 z-50 ${toast.type === "warn" ? "bg-amber-500" : "bg-emerald-400"}`}>
                   {toast.msg}
                 </div>
               )}
 
-              {loading ? (
-                <div class="flex-1 flex items-center justify-center text-slate-400 text-lg">
-                  <div class="animate-pulse">🔄 جاري مزامنة الداتا بيز اللحظية...</div>
-                </div>
-              ) : (
+              {loading ? <div class="flex-1 flex items-center justify-center text-slate-400 text-lg">🔄 جاري مزامنة الداتا بيز اللحظية...</div> : (
                 view === "booking" ? (
-                  <main class="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6">
+                  <div class="max-w-4xl w-full mx-auto p-4 md:p-6 flex-1">
                     <div class="text-center py-6">
                       <h1 class="text-3xl font-black text-emerald-400">احجز ملعبك دلوقتي أونلاين</h1>
-                      <p class="text-slate-400 mt-2 text-sm">تحديث فوري للمواعيد المتاحة والأسعار</p>
+                      <p class="text-slate-400 mt-2">تحديث فوري للمواعيد المتاحة والأسعار</p>
                     </div>
-
                     <div class="bg-slate-800 p-4 rounded-2xl mb-6 border border-slate-700 shadow-md">
-                      <label class="block text-slate-400 text-sm font-bold mb-2">📅 اختر تاريخ اليوم المراد حجزه:</label>
-                      <input type="date" value={selectedDate} min={todayStr()} onChange={e => setSelectedDate(e.target.value)} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 w-full text-white font-bold focus:outline-none focus:border-emerald-500 transition" />
+                      <label class="block text-slate-400 text-sm font-bold mb-2">📅 اختار يوم الحجز</label>
+                      <input type="date" value={selectedDate} min={todayStr()} onChange={e => setSelectedDate(e.target.value)} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 w-full text-white font-bold" />
                     </div>
-
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {TIME_SLOTS.map(time => {
                         const booked = bookedSlots.has(time);
                         const past = isTimeInPast(time, selectedDate);
                         const unavailable = booked || past;
                         return (
-                          <button key={time} disabled={unavailable} onClick={() => setModal({ time })} class={`p-4 rounded-xl text-center border transition-all flex flex-col justify-center items-center gap-1 ${unavailable ? "bg-red-950/40 border-red-900/60 text-red-400 cursor-not-allowed opacity-60" : "bg-emerald-950/60 border-emerald-500/40 hover:border-emerald-400 text-emerald-300 hover:scale-105 active:scale-95"}`}>
-                            <span class="text-lg font-bold">{formatTo12Hour(time)}</span>
-                            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-900/60">
-                              {booked ? "محجوز 🟥" : past ? "انتهى" : `${getPriceForSlot(time)} جنيه`}
-                            </span>
-                          </button>
+                          <div key={time} onClick={() => !unavailable && setModal({ time })} class={`p-4 rounded-xl text-center border cursor-pointer transition ${unavailable ? "bg-slate-950/40 border-slate-700 text-slate-600 cursor-not-allowed" : "bg-emerald-950 border-emerald-500 hover:border-emerald-400 text-emerald-300"}`}>
+                            <span class="text-lg font-bold block">{formatTo12Hour(time)}</span>
+                            <span class="text-xs">{booked ? "محجوز" : past ? "انتهى" : `${getPriceForSlot(time)} ج`}</span>
+                          </div>
                         );
                       })}
                     </div>
-                  </main>
+                  </div>
                 ) : (
-                  <main class="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6">
+                  <div class="max-w-4xl w-full mx-auto p-4 md:p-6 flex-1">
                     {!adminUnlocked ? (
                       <div class="bg-slate-800 p-6 rounded-2xl max-w-sm mx-auto my-12 border border-slate-700 shadow-2xl text-center">
-                        <h2 class="text-xl font-black text-emerald-400 mb-4">لوحة تحكم المشرف</h2>
-                        <input type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 w-full text-center text-white mb-2" placeholder="أدخل كلمة المرور" />
-                        {passError && <p class="text-red-400 text-xs my-1">{passError}</p>}
-                        <button onClick={handleAdminLogin} class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-2 px-4 rounded-xl w-full mt-2 transition">دخول</button>
+                        <h2 class="text-xl font-black text-emerald-400 mb-4">دخول الإدارة</h2>
+                        <input type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 w-full text-center text-white mb-2" placeholder="الباسورد" />
+                        {passError && <p class="text-red-400 text-xs">{passError}</p>}
+                        <button style={{width:'100%'}} class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-2 px-4 rounded-xl mt-2" onClick={handleAdminLogin}>دخول</button>
                       </div>
                     ) : (
                       <div>
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                          <h2 class="text-2xl font-black text-emerald-400">🏟️ لوحة التحكم والإدارة</h2>
-                          <div class="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
-                            {[
-                              { id: "pending", label: "قيد الانتظار" },
-                              { id: "confirmed", label: "المؤكدة" },
-                              { id: "all", label: "الكل اليوم" }
-                            ].map(t => (
-                              <button key={t.id} class={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${adminTab === t.id ? "bg-emerald-500 text-slate-900" : "text-slate-400 hover:text-white"}`} onClick={() => setAdminTab(t.id)}>{t.label}</button>
+                          <h2 class="text-2xl font-black text-emerald-400">🏟️ لوحة التحكم</h2>
+                          <div class="flex bg-slate-800 p-1 rounded-xl">
+                            {["pending", "confirmed", "all"].map(t => (
+                              <button key={t} class={`px-4 py-1.5 rounded-lg text-sm font-bold ${adminTab === t ? "bg-emerald-500 text-slate-900" : "text-slate-400"}`} onClick={() => setAdminTab(t)}>{t === "all" ? "الكل" : t === "pending" ? "انتظار" : "مؤكد"}</button>
                             ))}
                           </div>
                         </div>
-
                         <div class="bg-slate-800 p-4 rounded-2xl mb-6 border border-slate-700 shadow-md">
                           <input type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 w-full text-white font-bold" />
                         </div>
-
                         <div class="space-y-2">
                           {adminTab === "pending" && pendingList.map(b => (
-                            <div key={b.id} onClick={() => setDetailModal(b)} class="bg-slate-800 hover:bg-slate-750 p-4 rounded-xl border border-amber-500/30 flex justify-between items-center cursor-pointer transition">
-                              <div><span class="font-bold text-white">{b.name}</span> <span class="text-xs text-slate-400 bg-slate-900 px-2 py-0.5 rounded mr-2">{formatTo12Hour(b.time)}</span></div>
-                              <span class="text-amber-400 text-xs font-bold">انتظار التفعيل ←</span>
+                            <div key={b.id} class="bg-slate-800 hover:bg-slate-750 p-4 rounded-xl border border-amber-500/30 flex justify-between cursor-pointer" onClick={() => setDetailModal(b)}>
+                              <div><strong>{b.name}</strong> - {formatTo12Hour(b.time)} ({b.duration}س)</div>
+                              <button class="text-emerald-400 text-xs">إدارة ←</button>
                             </div>
                           ))}
                           {adminTab === "confirmed" && confirmedList.map(b => (
-                            <div key={b.id} onClick={() => setDetailModal(b)} class="bg-slate-800 hover:bg-slate-750 p-4 rounded-xl border border-emerald-500/30 flex justify-between items-center cursor-pointer transition">
-                              <div><span class="font-bold text-white">{b.name}</span> <span class="text-xs text-slate-400 bg-slate-900 px-2 py-0.5 rounded mr-2">{formatTo12Hour(b.time)}</span></div>
-                              <span class="text-emerald-400 text-xs font-bold">مؤكد ومحجوز ✓</span>
+                            <div key={b.id} class="bg-slate-800 p-4 rounded-xl border border-emerald-500 flex justify-between cursor-pointer" onClick={() => setDetailModal(b)}>
+                              <div><strong>{b.name}</strong> - {formatTo12Hour(b.time)} ✅</div>
+                              <span class="text-slate-400 text-xs">{b.duration}س</span>
                             </div>
                           ))}
                           {adminTab === "all" && adminDayAll.map(b => (
-                            <div key={b.id} onClick={() => setDetailModal(b)} class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center cursor-pointer">
-                              <div><span class="font-bold text-white">{b.name}</span> <span class="text-slate-400 text-sm">({b.status === "confirmed" ? "مؤكد" : b.status === "cancelled" ? "ملغي" : "انتظار"})</span></div>
-                              <span class="text-slate-400 text-xs">{formatTo12Hour(b.time)}</span>
+                            <div key={b.id} class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between cursor-pointer" onClick={() => setDetailModal(b)}>
+                              <div><strong>{b.name}</strong> - {formatTo12Hour(b.time)} ({b.status})</div>
+                              <span class="text-slate-400 text-xs">{b.paid ? "مدفوع" : "غير مدفوع"}</span>
                             </div>
                           ))}
-                          {((adminTab === "pending" && pendingList.length === 0) || (adminTab === "confirmed" && confirmedList.length === 0) || (adminTab === "all" && adminDayAll.length === 0)) && (
-                            <div class="text-center py-8 text-slate-500">لا توجد حجوزات لهذا اليوم حالياً.</div>
-                          )}
                         </div>
                       </div>
                     )}
-                  </main>
+                  </div>
                 )
               )}
 
+              {/* المودال الخاص بطلب الحجز والتأكيد يفتح انسيابياً كالسابق تماماً */}
               {modal && (
                 <div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn" onClick={() => setModal(null)}>
                   <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl relative" onClick={e => e.stopPropagation()}>
-                    <h3 class="text-xl font-black text-emerald-400 mb-4">📋 طلب حجز موعد جديد</h3>
-                    <p class="text-sm text-slate-300 mb-4">الساعة المختارة: <span class="text-emerald-300 font-bold">{formatTo12Hour(modal.time)}</span></p>
-                    
-                    <div class="space-y-4">
+                    <h2 class="text-xl font-black text-emerald-400 mb-4">📋 طلب حجز جديد</h2>
+                    <p class="text-sm text-slate-300 mb-4">الموعد: <span class="font-bold text-white">{formatTo12Hour(modal.time)}</span> يوم {formatDate(selectedDate)}</p>
+                    <div class="space-y-3">
                       <div>
-                        <label class="block text-xs text-slate-400 font-bold mb-1">اسم العميل</label>
-                        <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 w-full text-white" placeholder="اكتب اسم الكابتن" />
+                        <label class="block text-slate-400 text-xs font-bold mb-1">الاسم</label>
+                        <input onChange={e => setForm({ ...form, name: e.target.value })} style={{width:'100%'}} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 w-full text-white" />
                       </div>
                       <div>
-                        <label class="block text-xs text-slate-400 font-bold mb-1">رقم الهاتف (واتساب)</label>
-                        <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 w-full text-white text-left" placeholder="01xxxxxxxxx" />
+                        <label class="block text-slate-400 text-xs font-bold mb-1">رقم الواتساب</label>
+                        <input onChange={e => setForm({ ...form, phone: e.target.value })} style={{width:'100%'}} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 w-full text-white" />
                       </div>
                       <div>
-                        <label class="block text-xs text-slate-400 font-bold mb-1">مدة اللعب</label>
-                        <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 w-full text-white">
+                        <label class="block text-slate-400 text-xs font-bold mb-1">المدة</label>
+                        <select onChange={e => setForm({ ...form, duration: e.target.value })} style={{width:'100%'}} class="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 w-full text-white">
                           <option value="1">ساعة واحدة</option>
-                          <option value="2">ساعتين متتاليتين</option>
+                          <option value="2">ساعتين</option>
                         </select>
                       </div>
-
-                      <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-700 text-center">
-                        <span class="text-sm text-slate-400">إجمالي الحساب التقديري:</span>
+                      <div class="p-3 bg-slate-900 rounded-xl text-center">
+                        <span class="text-sm text-slate-400">إجمالي الحساب:</span>
                         <div class="text-2xl font-black text-emerald-400 mt-1">
-                          {calculateBookingPrice(modal.time, parseInt(form.duration))} جنيه
+                          {calculateBookingPrice(modal.time, parseInt(form.duration))} ج
                         </div>
                       </div>
-
-                      {formError && <p class="text-red-400 text-xs font-bold">{formError}</p>}
-
+                      {formError && <p class="text-red-400 text-xs">{formError}</p>}
                       <div class="flex gap-2 pt-2">
-                        <button onClick={handleBook} class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-3 rounded-xl transition">تأكيد وحفظ للحجز</button>
-                        <button onClick={() => setModal(null)} class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-xl transition">إلغاء</button>
+                        <button class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-3 rounded-xl" onClick={handleBook}>✅ إرسال طلب الحجز</button>
+                        <button class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-xl" onClick={() => setModal(null)}>إلغاء</button>
                       </div>
                     </div>
                   </div>
@@ -359,23 +341,14 @@
               {detailModal && (
                 <div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setDetailModal(null)}>
                   <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-                    <h3 class="text-xl font-black text-emerald-400 mb-2">تفاصيل وإدارة الحجز</h3>
-                    <p class="text-slate-400 text-sm mb-4">كود الحجز: <span class="font-mono text-slate-300 font-bold">#{detailModal.id}</span></p>
-
-                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-2 mb-4 text-sm">
-                      <p><span class="text-slate-400">اسم الكابتن:</span> <strong class="text-white text-base">{detailModal.name}</strong></p>
-                      <p><span class="text-slate-400">رقم الهاتف:</span> <span class="text-slate-300 font-mono">{detailModal.phone}</span></p>
-                      <p><span class="text-slate-400">توقيت الحجز:</span> <span class="text-emerald-300 font-bold">{formatTo12Hour(detailModal.time)}</span> ({detailModal.duration} ساعة)</p>
-                      <p><span class="text-slate-400">المبلغ المطلوب:</span> <span class="text-amber-400 font-bold">{detailModal.price} جنيه</span></p>
-                      <p><span class="text-slate-400">حالة الدفع الحالي:</span> <span class={`px-2 py-0.5 rounded font-bold text-xs ${detailModal.paid ? "bg-emerald-950 text-emerald-400" : "bg-red-950 text-red-400"}`}>{detailModal.paid ? "مدفوع بالكامل" : "غير مدفوع"}</span></p>
-                    </div>
-
+                    <h2 class="text-xl font-black text-emerald-400 mb-4">تفاصيل حجز الكابتن: {detailModal.name}</h2>
+                    <p class="text-white text-base">الموعد: {formatTo12Hour(detailModal.time)} ({detailModal.duration}س)</p>
+                    <p class="text-slate-300">الحالة: {detailModal.status === "confirmed" ? "مؤكدة ✅" : detailModal.status === "cancelled" ? "ملغية 🚫" : "في الانتظار ⏳"}</p>
+                    <p class="text-slate-300 mb-4">الدفع: {detailModal.paid ? "مدفوع ✅" : "غير مدفوع 🔴"} - {detailModal.price} ج</p>
                     <div class="flex flex-col gap-2">
-                      {detailModal.status === "pending" && (
-                        <button onClick={() => doConfirm(detailModal)} class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-3 rounded-xl w-full transition flex justify-center items-center gap-1">✔️ تأكيد الحجز وإرسال واتساب</button>
-                      )}
-                      <button onClick={() => togglePaid(detailModal.id, detailModal.paid)} class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl transition">💵 تبديل حالة الدفع (مدفوع / غير مدفوع)</button>
-                      <button onClick={() => cancelBooking(detailModal.id)} class="bg-red-900/40 hover:bg-red-900 text-red-400 hover:text-white font-bold py-2.5 rounded-xl transition border border-red-800">🚫 إلغاء هذا الحجز بالكامل</button>
+                      {detailModal.status === "pending" && <button class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-3 rounded-xl" onClick={() => doConfirm(detailModal)}>✔️ تأكيد وفتح واتساب للزبون</button>}
+                      <button class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-xl" onClick={() => togglePaid(detailModal.id, detailModal.paid)}>تغيير حالة الدفع</button>
+                      <button class="bg-red-900/40 hover:bg-red-900 text-red-400 font-bold py-2 px-4 rounded-xl" onClick={() => cancelBooking(detailModal.id)}>🚫 إلغاء الحجز</button>
                     </div>
                   </div>
                 </div>
