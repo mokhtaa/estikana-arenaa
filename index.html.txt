@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>استكانه أرينا</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // هنا نضع كود الـ React الخاص بك كاملاً
+        const { useState, useEffect } = React;
+
+        const TIME_SLOTS = [
+          "08:00", "09:00", "10:00", "11:00", "12:00", "13:00",
+          "14:00", "15:00", "16:00", "17:00", "18:00", "19:00",
+          "20:00", "21:00", "22:00", "23:00"
+        ];
+
+        const FIELD_NAME = "استكانه أرينا";
+        const ADMIN_PASSWORD = "19541954";
+
+        function getPriceForSlot(timeStr) {
+          const hour = parseInt(timeStr.split(":")[0]);
+          return hour >= 8 && hour < 16 ? 100 : 150;
+        }
+
+        function calculateBookingPrice(startTime, duration) {
+          const startIdx = TIME_SLOTS.indexOf(startTime);
+          if (startIdx === -1) return 0;
+          
+          let total = 0;
+          for (let i = 0; i < duration; i++) {
+            const slotTime = TIME_SLOTS[startIdx + i];
+            if (slotTime) {
+              total += getPriceForSlot(slotTime);
+            }
+          }
+          return total;
+        }
+
+        function todayStr() {
+          return new Date().toISOString().split("T")[0];
+        }
+
+        function formatDate(d) {
+          return new Date(d + "T00:00:00").toLocaleDateString("ar-EG", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric"
+          });
+        }
+
+        function genId() {
+          return Math.random().toString(36).slice(2, 9).toUpperCase();
+        }
+
+        const INITIAL_BOOKINGS = [
+          { id: genId(), name: "أحمد محمد", phone: "01012345678", date: todayStr(), time: "11:00", duration: 1, price: 100, status: "confirmed", paid: true, createdAt: "10:30 ص" },
+          { id: genId(), name: "محمود علي", phone: "01098765432", date: todayStr(), time: "20:00", duration: 2, price: 300, status: "pending", paid: false, createdAt: "11:15 ص" },
+        ];
+
+        function openWA(phone, message) {
+          const url = `https://wa.me/2${phone}?text=${encodeURIComponent(message)}`;
+          window.open(url, "_blank");
+        }
+
+        function buildConfirmMsg(b) {
+          return (
+            `مرحباً ${b.name} 👋\n\n` +
+            `✅ *تم تأكيد حجزك في ${FIELD_NAME}* ⚽\n\n` +
+            `━━━━━━━━━━━━━━━━━━\n` +
+            `📅 التاريخ : ${formatDate(b.date)}\n` +
+            `⏰ الوقت   : ${b.time}\n` +
+            `⏱ المدة   : ${b.duration} ساعة\n` +
+            `💰 المبلغ  : ${b.price} جنيه\n` +
+            `━━━━━━━━━━━━━━━━━━\n\n` +
+            `برجاء الحضور قبل الموعد بـ 10 دقائق 🙏\n` +
+            `نتمنى لك وقت ممتع! 🌟`
+          );
+        }
+
+        function buildReminderMsg(b) {
+          return (
+            `⏰ *تذكير بموعدك*\n\n` +
+            `مرحباً ${b.name}،\n` +
+            `لديك حجز في ${FIELD_NAME} ⚽\n\n` +
+            `📅 ${formatDate(b.date)}\n` +
+            `⏰ الساعة ${b.time} (${b.duration} ساعة)\n` +
+            `💰 المبلغ: ${b.price} جنيه\n\n` +
+            `في انتظارك! 🎉`
+          );
+        }
+
+        function App() {
+          const [view, setView] = useState("booking");
+          
+          const [bookings, setBookings] = useState(() => {
+            const saved = localStorage.getItem("estikana_bookings");
+            return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
+          });
+
+          const [selectedDate, setSelectedDate] = useState(todayStr());
+          const [adminDate, setAdminDate] = useState(todayStr());
+          const [modal, setModal] = useState(null);
+          const [form, setForm] = useState({ name: "", phone: "", duration: "1" });
+          const [formError, setFormError] = useState("");
+          const [toast, setToast] = useState({ msg: "", type: "success" });
+          const [adminTab, setAdminTab] = useState("pending");
+          const [reportMonth, setReportMonth] = useState(todayStr().slice(0, 7));
+          const [adminPass, setAdminPass] = useState("");
+          
+          const [adminUnlocked, setAdminUnlocked] = useState(() => {
+            return localStorage.getItem("estikana_admin_logged") === "true";
+          });
+          
+          const [passError, setPassError] = useState("");
+          const [detailModal, setDetailModal] = useState(null);
+          const [confirmModal, setConfirmModal] = useState(null);
+
+          useEffect(() => {
+            localStorage.setItem("estikana_bookings", JSON.stringify(bookings));
+          }, [bookings]);
+
+          useEffect(() => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("view") === "admin") {
+              setView("admin");
+            } else {
+              setView("booking");
+            }
+          }, []);
+
+          function isTimeInPast(timeStr, dateStr) {
+            if (dateStr !== todayStr()) return false;
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            
+            const [slotHour, slotMinute] = timeStr.split(":").map(Number);
+            if (slotHour < currentHour) return true;
+            if (slotHour === currentHour && slotMinute <= currentMinute) return true;
+            return false;
+          }
+
+          const dayBookings = bookings.filter(b => b.date === selectedDate && b.status !== "cancelled");
+          const bookedSlots = new Set();
+          dayBookings.forEach(b => {
+            for (let i = 0; i < b.duration; i++) {
+              const idx = TIME_SLOTS.indexOf(b.time);
+              if (idx !== -1 && idx + i < TIME_SLOTS.length) bookedSlots.add(TIME_SLOTS[idx + i]);
+            }
+          });
+
+          function isSlotAvailable(time, duration = 1) {
+            const idx = TIME_SLOTS.indexOf(time);
+            for (let i = 0; i < duration; i++) {
+              if (idx + i >= TIME_SLOTS.length) return false;
+              if (bookedSlots.has(TIME_SLOTS[idx + i])) return false;
+            }
+            return true;
+          }
+
+          function showToast(msg, type = "success") {
+            setToast({ msg, type });
+            setTimeout(() => setToast({ msg: "", type: "success" }), 4000);
+          }
+
+          function handleBook() {
+            setFormError("");
+            if (!form.name.trim()) { setFormError("من فضلك أدخل الاسم"); return; }
+            if (!form.phone.match(/^01[0-9]{9}$/)) { setFormError("رقم الواتس اب غير صحيح (مثال: 01012345678)"); return; }
+            const dur = parseInt(form.duration);
+            if (!isSlotAvailable(modal.time, dur)) { setFormError("الموعد غير متاح، اختار وقت تاني"); return; }
+
+            const booking = {
+              id: genId(),
+              name: form.name.trim(),
+              phone: form.phone.trim(),
+              date: selectedDate,
+              time: modal.time,
+              duration: dur,
+              price: calculateBookingPrice(modal.time, dur),
+              status: "pending",
+              paid: false,
+              createdAt: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }),
+            };
+            setBookings(prev => [...prev, booking]);
+            setModal(null);
+            setForm({ name: "", phone: "", duration: "1" });
+            showToast("✅ تم استلام طلب حجزك! انتظر تأكيد الإدارة.");
+          }
+
+          function handleConfirmClick(b) {
+            setDetailModal(null);
+            setConfirmModal(b);
+          }
+
+          function doConfirm(b) {
+            setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "confirmed" } : x));
+            setConfirmModal(null);
+            openWA(b.phone, buildConfirmMsg(b));
+            showToast("✅ تم تأكيد الحجز! جاري فتح واتس اب...");
+          }
+
+          function cancelBooking(id) {
+            if (!window.confirm("هل تريد إلغاء هذا الحجز؟")) return;
+            setBookings(prev => prev.map(b => b.id === id ? { ...b, status: "cancelled" } : b));
+            setDetailModal(null);
+            showToast("🚫 تم إلغاء الحجز.", "warn");
+          }
+
+          function togglePaid(id) {
+            setBookings(prev => prev.map(b => b.id === id ? { ...b, paid: !b.paid } : b));
+            setDetailModal(prev => prev && prev.id === id ? { ...prev, paid: !prev.paid } : prev);
+          }
+
+          function handleAdminLogin() {
+            if (adminPass === ADMIN_PASSWORD) { 
+              setAdminUnlocked(true); 
+              setPassError(""); 
+              localStorage.setItem("estikana_admin_logged", "true");
+            } else {
+              setPassError("كلمة المرور غير صحيحة");
+            }
+          }
+
+          function handleAdminLogout() {
+            setAdminUnlocked(false);
+            setAdminPass("");
+            localStorage.removeItem("estikana_admin_logged");
+          }
+
+          const adminDayAll = bookings.filter(b => b.date === adminDate);
+          const pendingList = adminDayAll.filter(b => b.status === "pending");
+          const confirmedList = adminDayAll.filter(b => b.status === "confirmed");
+          const cancelledList = adminDayAll.filter(b => b.status === "cancelled");
+
+          const reportBookings = bookings.filter(b => b.date.startsWith(reportMonth));
+          const totalRevenue = reportBookings.filter(b => b.paid).reduce((s, b) => s + b.price, 0);
+          const pendingRevenue = reportBookings.filter(b => !b.paid && b.status !== "cancelled").reduce((s, b) => s + b.price, 0);
+
+          function StatusBadge({ status }) {
+            const map = {
+              pending: { bg: "#78350f", color: "#fbbf24", label: "⏳ في الانتظار" },
+              confirmed: { bg: "#14532d", color: "#4ade80", label: "✅ مؤكد" },
+              cancelled: { bg: "#450a0a", color: "#f87171", label: "🚫 ملغي" },
+            };
+            const s = map[status] || map.pending;
+            return <span style={{ background: s.bg, color: s.color, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>{s.label}</span>;
+          }
+
+          function BookingCard({ b }) {
+            return (
+              <div style={S.bookingCard} onClick={() => setDetailModal(b)}>
+                <div style={S.bookingTop}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={S.bookingId}>#{b.id}</span>
+                    <span style={S.bookingName}>{b.name}</span>
+                  </div>
+                  <StatusBadge status={b.status} />
+                </div>
+                <div style={S.bookingMid}>
+                  <span>📱 {b.phone}</span>
+                  <span>⏰ {b.time} ({b.duration}س)</span>
+                  <span>💰 {b.price} ج</span>
+                  <span>{b.paid ? "💵 مدفوع" : "🔴 لم يُدفع"}</span>
+                </div>
+                <div style={S.bookingFooter}>
+                  <span style={{ color: "#64748b", fontSize: 12 }}>🕐 {b.createdAt}</span>
+                  <span style={S.detailLink}>اضغط للتفاصيل ←</span>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div style={S.root}>
+              <header style={S.header}>
+                <div style={S.logo}>⚽ {FIELD_NAME}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>
+                    {view === "admin" ? "🛠️ لوحة التحكم" : "👋 أهلاً بك"}
+                  </div>
+                  {view === "admin" && adminUnlocked && (
+                    <button onClick={handleAdminLogout} style={S.logoutBtn}>خروج 🚪</button>
+                  )}
+                </div>
+              </header>
+
+              {toast.msg && (
+                <div style={{ ...S.toast, background: toast.type === "warn" ? "#f59e0b" : "#22c55e" }}>
+                  {toast.msg}
+                </div>
+              )}
+
+              {view === "booking" && (
+                <div style={S.page}>
+                  <div style={S.hero}>
+                    <h1 style={S.heroTitle}>احجز ملعبك دلوقتي</h1>
+                    <p style={S.heroSub}>اختار اليوم والساعة المناسبة وابعت طلبك في ثواني</p>
+                  </div>
+
+                  <div style={S.card}>
+                    <label style={S.label}>📅 اختار يوم</label>
+                    <input type="date" value={selectedDate} min={todayStr()}
+                      onChange={e => setSelectedDate(e.target.value)} style={S.dateInput} />
+                  </div>
+
+                  <div style={S.legendRow}>
+                    <span style={S.chip("#4ade80", "#14532d")}>🟩 متاح للحجز</span>
+                    <span style={S.chip("#f87171", "#450a0a")}>🟥 محجوز أو مضى</span>
+                  </div>
+
+                  <div style={S.slotsGrid}>
+                    {TIME_SLOTS.map(time => {
+                      const booked = bookedSlots.has(time);
+                      const past = isTimeInPast(time, selectedDate);
+                      const unavailable = booked || past;
+                      const price = getPriceForSlot(time);
+                      
+                      return (
+                        <div key={time} onClick={() => !unavailable && setModal({ time })}
+                          style={{ ...S.slot, ...(unavailable ? S.slotBooked : S.slotFree) }}>
+                          <span style={S.slotTime}>{time}</span>
+                          <span style={S.slotLabel}>{booked ? "محجوز" : past ? "انتهى" : `${price} جنيه`}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p style={S.priceNote}>☀️ نهاراً (8ص إلى 4عصراً): 100 ج/ساعة | 🌙 ليلاً (4عصراً إلى 11م): 150 ج/ساعة</p>
+                </div>
+              )}
+
+              {modal && (
+                <div style={S.overlay} onClick={() => setModal(null)}>
+                  <div style={S.modalCard} onClick={e => e.stopPropagation()}>
+                    <h2 style={S.modalTitle}>📋 طلب حجز جديد</h2>
+                    <p style={S.modalSub}>📅 {formatDate(selectedDate)} &nbsp;|&nbsp; ⏰ {modal.time}</p>
+
+                    {[
+                      { key: "name", label: "الاسم الكامل", placeholder: "اسمك هنا" },
+                      { key: "phone", label: "رقم الواتس اب", placeholder: "01012345678" },
+                    ].map(f => (
+                      <div key={f.key} style={S.formGroup}>
+                        <label style={S.label}>{f.label}</label>
+                        <input value={form[f.key]} placeholder={f.placeholder}
+                          maxLength={f.key === "phone" ? 11 : undefined}
+                          onChange={e => setForm({ ...form, [f.key]: e.target.value })} style={S.input} />
+                      </div>
+                    ))}
+
+                    <div style={S.formGroup}>
+                      <label style={S.label}>المدة</label>
+                      <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={S.input}>
+                        {[1, 2, 3].map(d => (
+                          <option key={d} value={d}>
+                            {d} ساعة — {calculateBookingPrice(modal.time, d)} جنيه
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={S.totalBox}>💰 الإجمالي: <strong>{calculateBookingPrice(modal.time, parseInt(form.duration))} جنيه</strong></div>
+                    {formError && <p style={S.errMsg}>{formError}</p>}
+
+                    <div style={S.row}>
+                      <button style={S.btnGray} onClick={() => setModal(null)}>إلغاء</button>
+                      <button style={S.btnGreen} onClick={handleBook}>✅ إرسال طلب الحجز</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {confirmModal && (
+                <div style={S.overlay} onClick={() => setConfirmModal(null)}>
+                  <div style={{ ...S.modalCard, maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+                    <div style={S.waHeader}>
+                      <span style={S.waIcon}>📲</span>
+                      <h2 style={{ ...S.modalTitle, margin: 0 }}>تأكيد الحجز وإرسال واتس اب</h2>
+                    </div>
+                    <p style={{ color: "#94a3b8", fontSize: 14, margin: "8px 0 20px" }}>
+                      بعد الضغط على "تأكيد وإرسال" هيتفتح واتس اب تلقائياً بالرسالة دي جاهزة للزبون.
+                    </p>
+                    <div style={S.waBubble}>
+                      <div style={S.waBubbleHeader}>
+                        <span style={S.waDot} />
+                        <span style={{ color: "#25d366", fontSize: 13, fontWeight: 700 }}>معاينة الرسالة</span>
+                      </div>
+                      <pre style={S.waText}>{buildConfirmMsg(confirmModal)}</pre>
+                    </div>
+                    <div style={{ color: "#64748b", fontSize: 13, margin: "12px 0 20px", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>📱</span>
+                      <span>سيتم الإرسال لـ: <strong style={{ color: "#f1f5f9" }}>{confirmModal.phone}</strong></span>
+                    </div>
+                    <div style={S.row}>
+                      <button style={S.btnGray} onClick={() => setConfirmModal(null)}>إلغاء</button>
+                      <button style={{ ...S.btnGreen, background: "#25d366", fontSize: 15 }}
+                        onClick={() => doConfirm(confirmModal)}>
+                        ✅ تأكيد وفتح واتس اب
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {detailModal && (
+                <div style={S.overlay} onClick={() => setDetailModal(null)}>
+                  <div style={S.modalCard} onClick={e => e.stopPropagation()}>
+                    <h2 style={S.modalTitle}>📄 تفاصيل الحجز #{detailModal.id}</h2>
+                    <StatusBadge status={detailModal.status} />
+
+                    <table style={{ width: "100%", marginTop: 16, borderCollapse: "collapse" }}>
+                      <tbody>
+                        {[
+                          ["👤 الاسم", detailModal.name],
+                          ["📱 الهاتف", detailModal.phone],
+                          ["📅 التاريخ", formatDate(detailModal.date)],
+                          ["⏰ الوقت", detailModal.time],
+                          ["⏱ المدة", `${detailModal.duration} ساعة`],
+                          ["💰 المبلغ", `${detailModal.price} جنيه`],
+                          ["💵 الدفع", detailModal.paid ? "مدفوع ✅" : "لم يُدفع بعد 🔴"],
+                          ["🕐 وقت الطلب", detailModal.createdAt],
+                        ].map(([k, v]) => (
+                          <tr key={k}>
+                            <td style={S.dtKey}>{k}</td>
+                            <td style={S.dtVal}>{v}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    <div style={{ ...S.row, marginTop: 20, flexWrap: "wrap", gap: 8 }}>
+                      {detailModal.status === "pending" && (
+                        <button style={{ ...S.btnGreen, background: "#25d366", flex: "none", padding: "11px 20px" }}
+                          onClick={() => handleConfirmClick(detailModal)}>
+                          📲 تأكيد + واتس اب
+                        </button>
+                      )}
+                      {detailModal.status === "confirmed" && (
+                        <button style={{ ...S.btnGreen, background: "#1d4ed8", flex: "none", padding: "11px 20px" }}
+                          onClick={() => { openWA(detailModal.phone, buildReminderMsg(detailModal)); setDetailModal(null); }}>
+                          📲 إرسال تذكير
+                        </button>
+                      )}
+                      <button style={{ ...S.btnGray, background: detailModal.paid ? "#374151" : "#0369a1", color: "#fff", flex: "none", padding: "11px 20px" }}
+                        onClick={() => togglePaid(detailModal.id)}>
+                        {detailModal.paid ? "↩ إلغاء الدفع" : "💵 تسجيل دفع"}
+                      </button>
+                      {detailModal.status !== "cancelled" && (
+                        <button style={{ ...S.btnGray, background: "#7f1d1d", color: "#fca5a5", flex: "none", padding: "11px 20px" }}
+                          onClick={() => cancelBooking(detailModal.id)}>
+                          🚫 إلغاء الحجز
+                        </button>
+                      )}
+                      <button style={{ ...S.btnGray, flex: "none", padding: "11px 20px" }}
+                        onClick={() => setDetailModal(null)}>إغلاق</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {view === "admin" && (
+                <div style={S.page}>
+                  {!adminUnlocked ? (
+                    <div style={S.loginCard}>
+                      <div style={{ fontSize: 52, marginBottom: 12 }}>🔐</div>
+                      <h2 style={S.modalTitle}>دخول الإدارة</h2>
+                      <input type="password" placeholder="كلمة المرور" value={adminPass}
+                        onChange={e => setAdminPass(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && handleAdminLogin()} style={S.input} />
+                      {passError && <p style={S.errMsg}>{passError}</p>}
+                      <button style={{ ...S.btnGreen, width: "100%", marginTop: 10 }} onClick={handleAdminLogin}>دخول</button>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={S.adminTop}>
+                        <h2 style={S.adminTitle}>🏟️ لوحة إدارة {FIELD_NAME}</h2>
+                        <div style={S.tabs}>
+                          {[
+                            { key: "pending", label: `⏳ انتظار (${bookings.filter(b => b.date === adminDate && b.status === "pending").length})` },
+                            { key: "confirmed", label: `✅ مؤكدة (${bookings.filter(b => b.date === adminDate && b.status === "confirmed").length})` },
+                            { key: "all", label: "📋 الكل" },
+                            { key: "report", label: "📊 التقارير" },
+                          ].map(t => (
+                            <button key={t.key}
+                              style={adminTab === t.key ? S.tabActive : S.tab}
+                              onClick={() => setAdminTab(t.key)}>
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {adminTab !== "report" && (
+                        <div style={S.card}>
+                          <label style={S.label}>📅 اختار يوم للإدارة</label>
+                          <input type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} style={S.dateInput} />
+                        </div>
+                      )}
+
+                      {adminTab !== "report" && (
+                        <div style={S.statsRow}>
+                          {[
+                            { n: pendingList.length, l: "في الانتظار", c: "#fbbf24" },
+                            { n: confirmedList.length, l: "مؤكدة", c: "#4ade80" },
+                            { n: cancelledList.length, l: "ملغية", c: "#f87171" },
+                            { n: confirmedList.filter(b => b.paid).reduce((s, b) => s + b.price, 0) + " ج", l: "محصّل", c: "#34d399" },
+                          ].map((s, i) => (
+                            <div key={i} style={S.statCard}>
+                              <div style={{ ...S.statNum, color: s.c }}>{s.n}</div>
+                              <div style={S.statLbl}>{s.l}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {adminTab === "pending" && (
+                        pendingList.length === 0
+                          ? <div style={S.empty}>🎉 لا يوجد حجوزات في انتظار التأكيد لليوم المحدد</div>
+                          : pendingList.map(b => <BookingCard key={b.id} b={b} />)
+                      )}
+
+                      {adminTab === "confirmed" && (
+                        confirmedList.length === 0
+                          ? <div style={S.empty}>لا يوجد حجوزات مؤكدة في هذا اليوم</div>
+                          : confirmedList.map(b => <BookingCard key={b.id} b={b} />)
+                      )}
+
+                      {adminTab === "all" && (
+                        adminDayAll.length === 0
+                          ? <div style={S.empty}>لا يوجد حجوزات في هذا اليوم</div>
+                          : [...adminDayAll].sort((a, b) => a.time.localeCompare(b.time)).map(b => <BookingCard key={b.id} b={b} />)
+                      )}
+
+                      {adminTab === "report" && (
+                        <>
+                          <div style={S.card}>
+                            <label style={S.label}>📊 اختار شهر التقارير</label>
+                            <input type="month" value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={S.dateInput} />
+                          </div>
+
+                          <div style={S.statsRow}>
+                            {[
+                              { n: reportBookings.length, l: "إجمالي الحجوزات", c: "#f1f5f9" },
+                              { n: reportBookings.filter(b => b.status === "confirmed").length, l: "مؤكدة", c: "#4ade80" },
+                              { n: totalRevenue + " ج", l: "إيرادات محصلة", c: "#34d399" },
+                              { n: pendingRevenue + " ج", l: "مبالغ متبقية", c: "#fbbf24" },
+                            ].map((s, i) => (
+                              <div key={i} style={S.statCard}>
+                                <div style={{ ...S.statNum, color: s.c }}>{s.n}</div>
+                                <div style={S.statLbl}>{s.l}</div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div style={S.reportCard}>
+                            <h3 style={S.reportTitle}>📋 تفاصيل شهر {reportMonth}</h3>
+                            {reportBookings.length === 0
+                              ? <div style={S.empty}>لا يوجد حجوزات في هذا الشهر</div>
+                              : (
+                                <div style={{ overflowX: "auto" }}>
+                                  <table style={S.table}>
+                                    <thead>
+                                      <tr style={{ background: "#1e293b" }}>
+                                        {["#", "الاسم", "التاريخ", "الوقت", "المدة", "المبلغ", "الحالة", "الدفع"].map(h => (
+                                          <th key={h} style={S.th}>{h}</th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {reportBookings.map((b, i) => (
+                                        <tr key={b.id} style={{ background: i % 2 === 0 ? "#0f172a" : "#1a2332", cursor: "pointer" }}
+                                          onClick={() => setDetailModal(b)}>
+                                          <td style={S.td}>{b.id}</td>
+                                          <td style={S.td}>{b.name}</td>
+                                          <td style={S.td}>{b.date}</td>
+                                          <td style={S.td}>{b.time}</td>
+                                          <td style={S.td}>{b.duration}س</td>
+                                          <td style={S.td}>{b.price} ج</td>
+                                          <td style={S.td}>{b.status === "confirmed" ? "✅" : b.status === "cancelled" ? "🚫" : "⏳"}</td>
+                                          <td style={S.td}>{b.paid ? "💵" : "🔴"}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )
+                            }
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        const S = {
+          root:       { minHeight: "100vh", background: "#0f172a", fontFamily: "'Segoe UI',Tahoma,sans-serif", direction: "rtl", color: "#f1f5f9" },
+          header:     { background: "#1e293b", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e", position: "sticky", top: 0, zIndex: 100 },
+          logo:       { fontSize: 22, fontWeight: 800, color: "#22c55e" },
+          logoutBtn:  { padding: "6px 12px", background: "#7f1d1d", color: "#fca5a5", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: "bold" },
+          toast:      { position: "fixed", top: 72, left: "50%", transform: "translateX(-50%)", color: "#0f172a", padding: "12px 28px", borderRadius: 10, fontWeight: 700, zIndex: 999, fontSize: 15, whiteSpace: "nowrap", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" },
+          page:       { maxWidth: 820, margin: "0 auto", padding: "24px 16px" },
+          hero:       { textAlign: "center", padding: "28px 0 20px" },
+          heroTitle:  { fontSize: 28, fontWeight: 800, color: "#22c55e", margin: 0 },
+          heroSub:    { color: "#94a3b8", marginTop: 8, fontSize: 15 },
+          card:       { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 16, border: "1px solid #334155" },
+          label:      { display: "block", color: "#94a3b8", marginBottom: 6, fontSize: 13 },
+          dateInput:  { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "10px 14px", borderRadius: 8, fontSize: 15, width: "100%", boxSizing: "border-box" },
+          legendRow:  { display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" },
+          chip:       (color, bg) => ({ background: bg, color: color, borderRadius: 20, padding: "4px 14px", fontSize: 13, fontWeight: 600 }),
+          slotsGrid:  { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(110px,1fr))", gap: 10, marginBottom: 20 },
+          slot:       { padding: "12px 8px", borderRadius: 10, textAlign: "center", transition: "transform 0.1s" },
+          slotFree:   { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80", cursor: "pointer" },
+          slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", cursor: "not-allowed", opacity: 0.7 },
+          slotTime:   { display: "block", fontWeight: 700, fontSize: 17 },
+          slotLabel:  { display: "block", fontSize: 11, marginTop: 3, opacity: 0.85 },
+          priceNote:  { textAlign: "center", color: "#64748b", fontSize: 14, background: "#1e293b", padding: "10px", borderRadius: "8px", border: "1px solid #334155" },
+          overlay:    { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 },
+          modalCard:  { background: "#1e293b", borderRadius: 16, padding: 28, width: "100%", maxWidth: 440, border: "1px solid #334155", maxHeight: "90vh", overflowY: "auto" },
+          modalTitle: { margin: "0 0 8px", color: "#22c55e", fontSize: 20, fontWeight: 800 },
+          modalSub:   { color: "#94a3b8", fontSize: 14, marginBottom: 20 },
+          formGroup:  { marginBottom: 14 },
+          input:      { width: "100%", background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "10px 12px", borderRadius: 8, fontSize: 15, boxSizing: "border-box" },
+          totalBox:   { background: "#0f172a", border: "1px solid #22c55e", borderRadius: 8, padding: "10px 14px", marginBottom: 12, color: "#22c55e", fontSize: 16 },
+          errMsg:     { color: "#ef4444", fontSize: 13, margin: "4px 0 8px" },
+          row:        { display: "flex", gap: 10 },
+          btnGreen:   { flex: 1, padding: "11px 0", background: "#22c55e", color: "#0f172a", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 14, fontWeight: 700 },
+          btnGray:    { flex: 1, padding: "11px 0", background: "#334155", color: "#f1f5f9", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 14 },
+          waHeader:   { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 },
+          waIcon:     { fontSize: 32 },
+          waBubble:   { background: "#0f172a", borderRadius: 12, padding: 16, marginBottom: 8, border: "1px solid #25d366", position: "relative" },
+          waBubbleHeader: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10 },
+          waDot:      { width: 10, height: 10, borderRadius: "50%", background: "#25d366", display: "inline-block" },
+          waText:     { margin: 0, color: "#d1fae5", fontSize: 13, lineHeight: 1.7, fontFamily: "inherit", whiteSpace: "pre-wrap", direction: "rtl" },
+          loginCard:  { maxWidth: 360, margin: "60px auto", background: "#1e293b", borderRadius: 16, padding: 32, border: "1px solid #334155", textAlign: "center" },
+          adminTop:   { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 },
+          adminTitle: { color: "#22c55e", fontSize: 22, fontWeight: 800, margin: 0 },
+          tabs:       { display: "flex", gap: 6, flexWrap: "wrap" },
+          tab:        { background: "#1e293b", border: "1px solid #334155", color: "#94a3b8", padding: "7px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13 },
+          tabActive:  { background: "#22c55e", border: "1px solid #22c55e", color: "#0f172a", padding: "7px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700 },
+          statsRow:   { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 12, marginBottom: 20 },
+          statCard:   { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: "16px 12px", textAlign: "center" },
+          statNum:    { fontSize: 22, fontWeight: 800 },
+          statLbl:    { fontSize: 12, color: "#64748b", marginTop: 4 },
+          bookingCard:  { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: 16, marginBottom: 12, cursor: "pointer", transition: "border-color 0.2s" },
+          bookingTop:   { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+          bookingId:    { background: "#334155", borderRadius: 6, padding: "2px 8px", fontSize: 11, color: "#94a3b8" },
+          bookingName:  { fontWeight: 700, fontSize: 16, marginRight: 6 },
+          bookingMid:   { display: "flex", gap: 16, color: "#94a3b8", fontSize: 13, flexWrap: "wrap", marginBottom: 8 },
+          bookingFooter:{ display: "flex", justifyContent: "space-between", alignItems: "center" },
+          detailLink:   { color: "#22c55e", fontSize: 13 },
+          dtKey:      { color: "#64748b", padding: "7px 0", fontSize: 13, width: "35%", verticalAlign: "top" },
+          dtVal:      { color: "#f1f5f9", padding: "7px 0", fontSize: 14, fontWeight: 600 },
+          reportCard: { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: 20, marginTop: 16 },
+          reportTitle:{ color: "#22c55e", margin: "0 0 16px", fontSize: 17 },
+          table:      { width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 500 },
+          th:         { padding: "10px 8px", textAlign: "center", color: "#94a3b8", fontWeight: 600 },
+          td:         { padding: "9px 8px", textAlign: "center", borderBottom: "1px solid #1e293b" },
+          empty:      { textAlign: "center", color: "#475569", padding: "48px 0", fontSize: 16 },
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
