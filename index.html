@@ -45,7 +45,7 @@
         function getPriceForSlot(timeStr) {
           const hour24 = parseTo24Hour(timeStr);
           // من 1 ظهراً (13) إلى قبل 4 عصراً (16) بـ 100 جنيه، والباقي بـ 150 جنيه
-          return hour24 >= 13 && hour24 < 16 ? 100 : 150;
+          return hour24 >= 13 && hour24 < 19 ? 100 : 150;
         }
 
         function calculateBookingPrice(startTime, duration) {
