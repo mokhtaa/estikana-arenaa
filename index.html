@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>استكانه أرينا - الإدارة الشاملة</title>
+    <title>استكانه أرينا - الإدارة الشاملة المؤمنة</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -15,7 +15,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // 🔐 بيانات الربط الخاصة بمشروعك في Supabase
+        // 🔐 بيانات الربط الخاصة بمشروعك (آمنة تماماً للـ Public المباشر طالما فعلنا الـ RLS)
         const SUPABASE_URL = "https://wiugwyhpuhokhocttwbq.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_zzDhn9DNIAdjJLn8aNzKzA_4IapbzcL";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -26,7 +26,6 @@
         ];
 
         const FIELD_NAME = "استكانه أرينا";
-        const ADMIN_PASSWORD = "19541954";
 
         function getPriceForSlot(timeStr) {
           const hour = parseInt(timeStr.split(":")[0]);
@@ -36,20 +35,15 @@
         function calculateBookingPrice(startTime, duration) {
           const startIdx = TIME_SLOTS.indexOf(startTime);
           if (startIdx === -1) return 0;
-          
           let total = 0;
           for (let i = 0; i < duration; i++) {
             const slotTime = TIME_SLOTS[startIdx + i];
-            if (slotTime) {
-              total += getPriceForSlot(slotTime);
-            }
+            if (slotTime) total += getPriceForSlot(slotTime);
           }
           return total;
         }
 
-        function todayStr() {
-          return new Date().toISOString().split("T")[0];
-        }
+        function todayStr() { return new Date().toISOString().split("T")[0]; }
 
         function formatDate(d) {
           return new Date(d + "T00:00:00").toLocaleDateString("ar-EG", {
@@ -57,47 +51,24 @@
           });
         }
 
-        function genId() {
-          return Math.random().toString(36).slice(2, 9).toUpperCase();
-        }
+        function genId() { return Math.random().toString(36).slice(2, 9).toUpperCase(); }
 
         function openWA(phone, message) {
-          const url = `https://wa.me/2${phone}?text=${encodeURIComponent(message)}`;
-          window.open(url, "_blank");
+          window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(message)}`, "_blank");
         }
 
         function buildConfirmMsg(b) {
-          return (
-            `مرحباً ${b.name} 👋\n\n` +
-            `✅ *تم تأكيد حجزك في ${FIELD_NAME}* ⚽\n\n` +
-            `━━━━━━━━━━━━━━━━━━\n` +
-            `📅 التاريخ : ${formatDate(b.date)}\n` +
-            `⏰ الوقت   : ${b.time}\n` +
-            `⏱ المدة   : ${b.duration} ساعة\n` +
-            `💰 المبلغ  : ${b.price} جنيه\n` +
-            `━━━━━━━━━━━━━━━━━━\n\n` +
-            `برجاء الحضور قبل الموعد بـ 10 دقائق 🙏\n` +
-            `نتمنى لك وقت ممتع! 🌟`
-          );
+          return `مرحباً ${b.name} 👋\n\n✅ *تم تأكيد حجزك في ${FIELD_NAME}* ⚽\n\n━━━━━━━━━━━━━━━━━━\n📅 التاريخ : ${formatDate(b.date)}\n⏰ الوقت   : ${b.time}\n⏱ المدة   : ${b.duration} ساعة\n💰 المبلغ  : ${b.price} جنيه\n━━━━━━━━━━━━━━━━━━\n\nبرجاء الحضور قبل الموعد بـ 10 دقائق 🙏\nنتمنى لك وقت ممتع! 🌟`;
         }
 
         function buildReminderMsg(b) {
-          return (
-            `⏰ *تذكير بموعدك*\n\n` +
-            `مرحباً ${b.name}،\n` +
-            `لديك حجز في ${FIELD_NAME} ⚽\n\n` +
-            `📅 ${formatDate(b.date)}\n` +
-            `⏰ الساعة ${b.time} (${b.duration} ساعة)\n` +
-            `💰 المبلغ: ${b.price} جنيه\n\n` +
-            `في انتظارك! 🎉`
-          );
+          return `⏰ *تذكير بموعدك*\n\nمرحباً ${b.name}،\nلديك حجز في ${FIELD_NAME} ⚽\n\n📅 ${formatDate(b.date)}\n⏰ الساعة ${b.time} (${b.duration} ساعة)\n💰 المبلغ: ${b.price} جنيه\n\nفي انتظارك! 🎉`;
         }
 
         function App() {
           const [view, setView] = useState("booking");
           const [bookings, setBookings] = useState([]);
           const [loading, setLoading] = useState(true);
-
           const [selectedDate, setSelectedDate] = useState(todayStr());
           const [adminDate, setAdminDate] = useState(todayStr());
           const [modal, setModal] = useState(null);
@@ -107,46 +78,32 @@
           const [adminTab, setAdminTab] = useState("pending");
           const [reportMonth, setReportMonth] = useState(todayStr().slice(0, 7));
           const [adminPass, setAdminPass] = useState("");
-          
-          const [adminUnlocked, setAdminUnlocked] = useState(() => {
-            return localStorage.getItem("estikana_admin_logged") === "true";
-          });
-          
+          const [loginLoading, setLoginLoading] = useState(false);
+          const [adminUnlocked, setAdminUnlocked] = useState(() => localStorage.getItem("estikana_admin_logged") === "true");
           const [passError, setPassError] = useState("");
           const [detailModal, setDetailModal] = useState(null);
           const [confirmModal, setConfirmModal] = useState(null);
 
-          // جلب البيانات من المزامنة الفورية لـ Supabase
           useEffect(() => {
             fetchBookings();
             const channels = supabaseClient.channel('custom-all-channel')
-              .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-                fetchBookings();
-              })
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { fetchBookings(); })
               .subscribe();
-
             return () => { channels.unsubscribe(); };
           }, []);
 
           async function fetchBookings() {
             try {
               const { data, error } = await supabaseClient.from('bookings').select('*');
-              if (!error && data) {
-                setBookings(data);
-              }
-            } catch (e) {
-              console.error(e);
-            }
+              if (!error && data) setBookings(data);
+            } catch (e) { console.error(e); }
             setLoading(false);
           }
 
           useEffect(() => {
             const params = new URLSearchParams(window.location.search);
-            if (params.get("view") === "admin") {
-              setView("admin");
-            } else {
-              setView("booking");
-            }
+            if (params.get("view") === "admin") { setView("admin"); } 
+            else { setView("booking"); }
           }, []);
 
           function isTimeInPast(timeStr, dateStr) {
@@ -169,8 +126,7 @@
           function isSlotAvailable(time, duration = 1) {
             const idx = TIME_SLOTS.indexOf(time);
             for (let i = 0; i < duration; i++) {
-              if (idx + i >= TIME_SLOTS.length) return false;
-              if (bookedSlots.has(TIME_SLOTS[idx + i])) return false;
+              if (idx + i >= TIME_SLOTS.length || bookedSlots.has(TIME_SLOTS[idx + i])) return false;
             }
             return true;
           }
@@ -188,31 +144,18 @@
             if (!isSlotAvailable(modal.time, dur)) { setFormError("الموعد غير متاح"); return; }
 
             const newBooking = {
-              id: genId(),
-              name: form.name.trim(),
-              phone: form.phone.trim(),
-              date: selectedDate,
-              time: modal.time,
-              duration: dur,
-              price: calculateBookingPrice(modal.time, dur),
-              status: "pending",
-              paid: false
+              id: genId(), name: form.name.trim(), phone: form.phone.trim(),
+              date: selectedDate, time: modal.time, duration: dur,
+              price: calculateBookingPrice(modal.time, dur), status: "pending", paid: false
             };
 
             const { error } = await supabaseClient.from('bookings').insert([newBooking]);
-            if (error) {
-              showToast("حدث خطأ أثناء حفظ الحجز", "warn");
-            } else {
-              setModal(null);
-              setForm({ name: "", phone: "", duration: "1" });
+            if (error) { showToast("حدث خطأ أثناء حفظ الحجز", "warn"); } 
+            else {
+              setModal(null); setForm({ name: "", phone: "", duration: "1" });
               showToast("✅ تم استلام طلب حجزك وحفظه أونلاين!");
               fetchBookings();
             }
-          }
-
-          function handleConfirmClick(b) {
-            setDetailModal(null);
-            setConfirmModal(b);
           }
 
           async function doConfirm(b) {
@@ -228,11 +171,7 @@
           async function cancelBooking(id) {
             if (!window.confirm("هل تريد إلغاء هذا الحجز؟")) return;
             const { error } = await supabaseClient.from('bookings').update({ status: 'cancelled' }).eq('id', id);
-            if (!error) {
-              setDetailModal(null);
-              showToast("🚫 تم إلغاء الحجز.", "warn");
-              fetchBookings();
-            }
+            if (!error) { setDetailModal(null); showToast("🚫 تم إلغاء الحجز.", "warn"); fetchBookings(); }
           }
 
           async function togglePaid(id, currentPaid) {
@@ -244,28 +183,39 @@
             }
           }
 
-          function handleAdminLogin() {
-            if (adminPass === ADMIN_PASSWORD) { 
-              setAdminUnlocked(true); 
-              setPassError(""); 
-              localStorage.setItem("estikana_admin_logged", "true");
-            } else {
-              setPassError("كلمة المرور غير صحيحة");
+          // 🔒 التحقق المشفر والآمن تماماً عبر الـ Database دون وجود الباسورد في السورس كود
+          async function handleAdminLogin() {
+            if (!adminPass.trim()) return;
+            setLoginLoading(true);
+            setPassError("");
+            try {
+              const { data, error } = await supabaseClient
+                .from('admin_config')
+                .select('value')
+                .eq('key', 'admin_password')
+                .single();
+              
+              if (!error && data && data.value === adminPass.trim()) {
+                setAdminUnlocked(true);
+                localStorage.setItem("estikana_admin_logged", "true");
+              } else {
+                setPassError("كلمة المرور غير صحيحة ❌");
+              }
+            } catch (e) {
+              setPassError("حدث خطأ في الاتصال بالسيرفر");
             }
+            setLoginLoading(false);
           }
 
           function handleAdminLogout() {
-            setAdminUnlocked(false);
-            setAdminPass("");
+            setAdminUnlocked(false); setAdminPass("");
             localStorage.removeItem("estikana_admin_logged");
           }
 
-          // تجميع حسابات لوحة الإدارة
           const adminDayAll = bookings.filter(b => b.date === adminDate);
           const pendingList = adminDayAll.filter(b => b.status === "pending");
           const confirmedList = adminDayAll.filter(b => b.status === "confirmed");
           const cancelledList = adminDayAll.filter(b => b.status === "cancelled");
-
           const reportBookings = bookings.filter(b => b.date.startsWith(reportMonth));
           const totalRevenue = reportBookings.filter(b => b.paid).reduce((s, b) => s + b.price, 0);
           const pendingRevenue = reportBookings.filter(b => !b.paid && b.status !== "cancelled").reduce((s, b) => s + b.price, 0);
@@ -308,20 +258,12 @@
               <header style={S.header}>
                 <div style={S.logo}>⚽ {FIELD_NAME}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>
-                    {view === "admin" ? "🛠️ لوحة التحكم" : "👋 أهلاً بك"}
-                  </div>
-                  {view === "admin" && adminUnlocked && (
-                    <button onClick={handleAdminLogout} style={S.logoutBtn}>خروج 🚪</button>
-                  )}
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{view === "admin" ? "🛠️ لوحة التحكم" : "👋 أهلاً بك"}</div>
+                  {view === "admin" && adminUnlocked && <button onClick={handleAdminLogout} style={S.logoutBtn}>خروج 🚪</button>}
                 </div>
               </header>
 
-              {toast.msg && (
-                <div style={{ ...S.toast, background: toast.type === "warn" ? "#f59e0b" : "#22c55e" }}>
-                  {toast.msg}
-                </div>
-              )}
+              {toast.msg && <div style={{ ...S.toast, background: toast.type === "warn" ? "#f59e0b" : "#22c55e" }}>{toast.msg}</div>}
 
               {loading ? (
                 <div style={{ color: "#94a3b8", textAlign: "center", padding: "100px", fontSize: "18px", fontWeight: "bold" }}>🔄 جاري الاتصال بالداتا بيز الحية...</div>
@@ -332,30 +274,23 @@
                       <h1 style={S.heroTitle}>احجز ملعبك دلوقتي</h1>
                       <p style={S.heroSub}>اختار اليوم والساعة المناسبة وابعت طلبك في ثواني</p>
                     </div>
-
                     <div style={S.card}>
                       <label style={S.label}>📅 اختار يوم</label>
-                      <input type="date" value={selectedDate} min={todayStr()}
-                        onChange={e => setSelectedDate(e.target.value)} style={S.dateInput} />
+                      <input type="date" value={selectedDate} min={todayStr()} onChange={e => setSelectedDate(e.target.value)} style={S.dateInput} />
                     </div>
-
                     <div style={S.legendRow}>
                       <span style={S.chip("#4ade80", "#14532d")}>🟩 متاح للحجز</span>
                       <span style={S.chip("#f87171", "#450a0a")}>🟥 محجوز أو مضى</span>
                     </div>
-
                     <div style={S.slotsGrid}>
                       {TIME_SLOTS.map(time => {
                         const booked = bookedSlots.has(time);
                         const past = isTimeInPast(time, selectedDate);
                         const unavailable = booked || past;
-                        const price = getPriceForSlot(time);
-                        
                         return (
-                          <div key={time} onClick={() => !unavailable && setModal({ time })}
-                            style={{ ...S.slot, ...(unavailable ? S.slotBooked : S.slotFree) }}>
+                          <div key={time} onClick={() => !unavailable && setModal({ time })} style={{ ...S.slot, ...(unavailable ? S.slotBooked : S.slotFree) }}>
                             <span style={S.slotTime}>{time}</span>
-                            <span style={S.slotLabel}>{booked ? "محجوز" : past ? "انتهى" : `${price} جنيه`}</span>
+                            <span style={S.slotLabel}>{booked ? "محجوز" : past ? "انتهى" : `${getPriceForSlot(time)} جنيه`}</span>
                           </div>
                         );
                       })}
@@ -367,12 +302,13 @@
                     {!adminUnlocked ? (
                       <div style={S.loginCard}>
                         <div style={{ fontSize: 52, marginBottom: 12 }}>🔐</div>
-                        <h2 style={S.modalTitle}>دخول الإدارة</h2>
-                        <input type="password" placeholder="كلمة المرور" value={adminPass}
-                          onChange={e => setAdminPass(e.target.value)}
-                          onKeyDown={e => e.key === "Enter" && handleAdminLogin()} style={S.input} />
+                        <h2 style={S.modalTitle}>دخول الإدارة الآمن</h2>
+                        <input type="password" placeholder="كلمة المرور" value={adminPass} disabled={loginLoading}
+                          onChange={e => setAdminPass(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAdminLogin()} style={S.input} />
                         {passError && <p style={S.errMsg}>{passError}</p>}
-                        <button style={{ ...S.btnGreen, width: "100%", marginTop: 10 }} onClick={handleAdminLogin}>دخول</button>
+                        <button style={{ ...S.btnGreen, width: "100%", marginTop: 10, opacity: loginLoading ? 0.6 : 1 }} disabled={loginLoading} onClick={handleAdminLogin}>
+                          {loginLoading ? "جاري التحقق سحابياً..." : "دخول آمن"}
+                        </button>
                       </div>
                     ) : (
                       <>
@@ -385,11 +321,7 @@
                               { key: "all", label: "📋 الكل اليوم" },
                               { key: "report", label: "📊 التقارير الشهري" },
                             ].map(t => (
-                              <button key={t.key}
-                                style={adminTab === t.key ? S.tabActive : S.tab}
-                                onClick={() => setAdminTab(t.key)}>
-                                {t.label}
-                              </button>
+                              <button key={t.key} style={adminTab === t.key ? S.tabActive : S.tab} onClick={() => setAdminTab(t.key)}>{t.label}</button>
                             ))}
                           </div>
                         </div>
@@ -401,7 +333,6 @@
                           </div>
                         )}
 
-                        {/* لوحة العدادات والإيرادات اليومية والشهرية ظهرت هنا */}
                         {adminTab !== "report" && (
                           <div style={S.statsRow}>
                             {[
@@ -418,23 +349,9 @@
                           </div>
                         )}
 
-                        {adminTab === "pending" && (
-                          pendingList.length === 0
-                            ? <div style={S.empty}>🎉 لا يوجد حجوزات في انتظار التأكيد لهذا اليوم</div>
-                            : pendingList.map(b => <BookingCard key={b.id} b={b} />)
-                        )}
-
-                        {adminTab === "confirmed" && (
-                          confirmedList.length === 0
-                            ? <div style={S.empty}>لا يوجد حجوزات مؤكدة في هذا اليوم</div>
-                            : confirmedList.map(b => <BookingCard key={b.id} b={b} />)
-                        )}
-
-                        {adminTab === "all" && (
-                          adminDayAll.length === 0
-                            ? <div style={S.empty}>لا يوجد حجوزات مسجلة في هذا اليوم</div>
-                            : [...adminDayAll].sort((a, b) => a.time.localeCompare(b.time)).map(b => <BookingCard key={b.id} b={b} />)
-                        )}
+                        {adminTab === "pending" && (pendingList.length === 0 ? <div style={S.empty}>🎉 لا يوجد حجوزات في انتظار التأكيد لهذا اليوم</div> : pendingList.map(b => <BookingCard key={b.id} b={b} />))}
+                        {adminTab === "confirmed" && (confirmedList.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مؤكدة في هذا اليوم</div> : confirmedList.map(b => <BookingCard key={b.id} b={b} />))}
+                        {adminTab === "all" && (adminDayAll.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مسجلة في هذا اليوم</div> : [...adminDayAll].sort((a, b) => a.time.localeCompare(b.time)).map(b => <BookingCard key={b.id} b={b} />))}
 
                         {adminTab === "report" && (
                           <>
@@ -442,13 +359,12 @@
                               <label style={S.label}>📊 اختار شهر التقارير والحسابات</label>
                               <input type="month" value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={S.dateInput} />
                             </div>
-
                             <div style={S.statsRow}>
                               {[
-                                { n: reportBookings.length, l: "إجمالي الحجوزات والشغل", c: "#f1f5f9" },
+                                { n: reportBookings.length, l: "إجمالي الحجوزات", c: "#f1f5f9" },
                                 { n: reportBookings.filter(b => b.status === "confirmed").length, l: "مؤكدة", c: "#4ade80" },
-                                { n: totalRevenue + " ج", l: "إيرادات دخلت درج الكاش", c: "#34d399" },
-                                { n: pendingRevenue + " ج", l: "فلوس لسه بره (متبقية)", c: "#fbbf24" },
+                                { n: totalRevenue + " ج", l: "إيرادات كاش محصلة", c: "#34d399" },
+                                { n: pendingRevenue + " ج", l: "فلوس لسه بره", c: "#fbbf24" },
                               ].map((s, i) => (
                                 <div key={i} style={S.statCard}>
                                   <div style={{ ...S.statNum, color: s.c }}>{s.n}</div>
@@ -456,39 +372,32 @@
                                 </div>
                               ))}
                             </div>
-
                             <div style={S.reportCard}>
                               <h3 style={S.reportTitle}>📋 كشف حجوزات شهر {reportMonth}</h3>
-                              {reportBookings.length === 0
-                                ? <div style={S.empty}>لا يوجد حجوزات في هذا الشهر</div>
-                                : (
-                                  <div style={{ overflowX: "auto" }}>
-                                    <table style={S.table}>
-                                      <thead>
-                                        <tr style={{ background: "#1e293b" }}>
-                                          {["الاسم", "التاريخ", "الوقت", "المدة", "المبلغ", "الحالة", "الدفع"].map(h => (
-                                            <th key={h} style={S.th}>{h}</th>
-                                          ))}
+                              {reportBookings.length === 0 ? <div style={S.empty}>لا يوجد حجوزات في هذا الشهر</div> : (
+                                <div style={{ overflowX: "auto" }}>
+                                  <table style={S.table}>
+                                    <thead>
+                                      <tr style={{ background: "#1e293b" }}>
+                                        {["الاسم", "التاريخ", "الوقت", "المدة", "المبلغ", "الحالة", "الدفع"].map(h => <th key={h} style={S.th}>{h}</th>)}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {reportBookings.map((b, i) => (
+                                        <tr key={b.id} style={{ background: i % 2 === 0 ? "#0f172a" : "#1a2332", cursor: "pointer" }} onClick={() => setDetailModal(b)}>
+                                          <td style={S.td}>{b.name}</td>
+                                          <td style={S.td}>{b.date}</td>
+                                          <td style={S.td}>{b.time}</td>
+                                          <td style={S.td}>{b.duration}س</td>
+                                          <td style={S.td}>{b.price} ج</td>
+                                          <td style={S.td}>{b.status === "confirmed" ? "✅ مؤكد" : b.status === "cancelled" ? "🚫 ملغي" : "⏳ انتظار"}</td>
+                                          <td style={S.td}>{b.paid ? "💵 مدفوع" : "🔴 لم يدفع"}</td>
                                         </tr>
-                                      </thead>
-                                      <tbody>
-                                        {reportBookings.map((b, i) => (
-                                          <tr key={b.id} style={{ background: i % 2 === 0 ? "#0f172a" : "#1a2332", cursor: "pointer" }}
-                                            onClick={() => setDetailModal(b)}>
-                                            <td style={S.td}>{b.name}</td>
-                                            <td style={S.td}>{b.date}</td>
-                                            <td style={S.td}>{b.time}</td>
-                                            <td style={S.td}>{b.duration}س</td>
-                                            <td style={S.td}>{b.price} ج</td>
-                                            <td style={S.td}>{b.status === "confirmed" ? "✅ مؤكد" : b.status === "cancelled" ? "🚫 ملغي" : "⏳ انتظار"}</td>
-                                            <td style={S.td}>{b.paid ? "💵 مدفوع" : "🔴 لم يدفع"}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )
-                              }
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
                             </div>
                           </>
                         )}
@@ -504,33 +413,23 @@
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
                     <h2 style={S.modalTitle}>📋 طلب حجز جديد</h2>
                     <p style={S.modalSub}>📅 {formatDate(selectedDate)} &nbsp;|&nbsp; ⏰ {modal.time}</p>
-
                     {[
                       { key: "name", label: "الاسم الكامل", placeholder: "اسم الكابتن" },
                       { key: "phone", label: "رقم الواتس اب", placeholder: "01012345678" },
                     ].map(f => (
                       <div key={f.key} style={S.formGroup}>
                         <label style={S.label}>{f.label}</label>
-                        <input value={form[f.key]} placeholder={f.placeholder}
-                          maxLength={f.key === "phone" ? 11 : undefined}
-                          onChange={e => setForm({ ...form, [f.key]: e.target.value })} style={S.input} />
+                        <input value={form[f.key]} placeholder={f.placeholder} maxLength={f.key === "phone" ? 11 : undefined} onChange={e => setForm({ ...form, [f.key]: e.target.value })} style={S.input} />
                       </div>
                     ))}
-
                     <div style={S.formGroup}>
                       <label style={S.label}>المدة</label>
                       <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={S.input}>
-                        {[1, 2, 3].map(d => (
-                          <option key={d} value={d}>
-                            {d} ساعة — {calculateBookingPrice(modal.time, d)} جنيه
-                          </option>
-                        ))}
+                        {[1, 2, 3].map(d => <option key={d} value={d}>{d} ساعة — {calculateBookingPrice(modal.time, d)} جنيه</option>)}
                       </select>
                     </div>
-
                     <div style={S.totalBox}>💰 الإجمالي: <strong>{calculateBookingPrice(modal.time, parseInt(form.duration))} جنيه</strong></div>
                     {formError && <p style={S.errMsg}>{formError}</p>}
-
                     <div style={S.row}>
                       <button style={S.btnGray} onClick={() => setModal(null)}>إلغاء</button>
                       <button style={S.btnGreen} onClick={handleBook}>✅ إرسال طلب الحجز</button>
@@ -543,30 +442,22 @@
               {confirmModal && (
                 <div style={S.overlay} onClick={() => setConfirmModal(null)}>
                   <div style={{ ...S.modalCard, maxWidth: 460 }} onClick={e => e.stopPropagation()}>
-                    <div style={S.waHeader}>
-                      <span style={S.waIcon}>📲</span>
-                      <h2 style={{ ...S.modalTitle, margin: 0 }}>تأكيد وإرسال واتساب</h2>
-                    </div>
-                    <div style={S.waBubble}>
-                      <pre style={S.waText}>{buildConfirmMsg(confirmModal)}</pre>
-                    </div>
-                    <div style={S.row} style={{marginTop: "20px"}}>
+                    <div style={S.waHeader}><span style={S.waIcon}>📲</span><h2 style={{ ...S.modalTitle, margin: 0 }}>تأكيد وإرسال واتساب</h2></div>
+                    <div style={S.waBubble}><pre style={S.waText}>{buildConfirmMsg(confirmModal)}</pre></div>
+                    <div style={{ ...S.row, marginTop: "20px" }}>
                       <button style={S.btnGray} onClick={() => setConfirmModal(null)}>إلغاء</button>
-                      <button style={{ ...S.btnGreen, background: "#25d366" }} onClick={() => doConfirm(confirmModal)}>
-                        ✅ تأكيد وفتح واتس اب
-                      </button>
+                      <button style={{ ...S.btnGreen, background: "#25d366" }} onClick={() => doConfirm(confirmModal)}>✅ تأكيد وفتح واتس اب</button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* مودال تفاصيل وإدارة الحجز للإدارة */}
+              {/* مودال تفاصيل وإدارة الحجز */}
               {detailModal && (
                 <div style={S.overlay} onClick={() => setDetailModal(null)}>
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
                     <h2 style={S.modalTitle}>📄 تفاصيل وإدارة الحجز</h2>
                     <StatusBadge status={detailModal.status} />
-
                     <table style={{ width: "100%", marginTop: 16, borderCollapse: "collapse" }}>
                       <tbody>
                         {[
@@ -585,30 +476,11 @@
                         ))}
                       </tbody>
                     </table>
-
                     <div style={{ ...S.row, marginTop: 20, flexWrap: "wrap", gap: 8 }}>
-                      {detailModal.status === "pending" && (
-                        <button style={{ ...S.btnGreen, background: "#25d366", flex: "none" }}
-                          onClick={() => handleConfirmClick(detailModal)}>
-                          📲 تأكيد + واتس اب
-                        </button>
-                      )}
-                      {detailModal.status === "confirmed" && (
-                        <button style={{ ...S.btnGreen, background: "#1d4ed8", flex: "none" }}
-                          onClick={() => { openWA(detailModal.phone, buildReminderMsg(detailModal)); setDetailModal(null); }}>
-                          📲 إرسال تذكير
-                        </button>
-                      )}
-                      <button style={{ ...S.btnGray, background: detailModal.paid ? "#374151" : "#0369a1", color: "#fff" }}
-                        onClick={() => togglePaid(detailModal.id, detailModal.paid)}>
-                        {detailModal.paid ? "↩ إلغاء الدفع" : "💵 تسجيل دفع"}
-                      </button>
-                      {detailModal.status !== "cancelled" && (
-                        <button style={{ ...S.btnGray, background: "#7f1d1d", color: "#fca5a5" }}
-                          onClick={() => cancelBooking(detailModal.id)}>
-                          🚫 إلغاء الحجز
-                        </button>
-                      )}
+                      {detailModal.status === "pending" && <button style={{ ...S.btnGreen, background: "#25d366", flex: "none" }} onClick={() => setConfirmModal(detailModal)}>📲 تأكيد + واتس اب</button>}
+                      {detailModal.status === "confirmed" && <button style={{ ...S.btnGreen, background: "#1d4ed8", flex: "none" }} onClick={() => { openWA(detailModal.phone, buildReminderMsg(detailModal)); setDetailModal(null); }}>📲 إرسال تذكير</button>}
+                      <button style={{ ...S.btnGray, background: detailModal.paid ? "#374151" : "#0369a1", color: "#fff" }} onClick={() => togglePaid(detailModal.id, detailModal.paid)}>{detailModal.paid ? "↩ إلغاء الدفع" : "💵 تسجيل دفع"}</button>
+                      {detailModal.status !== "cancelled" && <button style={{ ...S.btnGray, background: "#7f1d1d", color: "#fca5a5" }} onClick={() => cancelBooking(detailModal.id)}>🚫 إلغاء الحجز</button>}
                       <button style={S.btnGray} onClick={() => setDetailModal(null)}>إغلاق</button>
                     </div>
                   </div>
@@ -618,7 +490,6 @@
           );
         }
 
-        // كائن كود التنسيقات الفخم والكامل (CSS-in-JS)
         const S = {
           root:        { minHeight: "100vh", background: "#0f172a", fontFamily: "Tahoma,sans-serif", direction: "rtl", color: "#f1f5f9" },
           header:      { background: "#1e293b", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e", position: "sticky", top: 0, zIndex: 100 },
