@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>استكانه أرينا - الإدارة الشاملة المؤمنة</title>
+    
+    <!-- الكود المباشر لتهيئة خلفية الموقع ومنع ظهور اللون الأبيض تماماً أثناء التحميل -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f172a !important;
+            font-family: system-ui, -apple-system, sans-serif;
+            direction: rtl;
+        }
+    </style>
+
     <!-- استدعاء المكتبات الأساسية كـ Globals متوافقة تماماً مع المتصفح -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -11,17 +23,18 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+    
+    <!-- حاوية التطبيق الرئيسية -->
     <div id="root"></div>
 
-    <!-- السكريبت المباشر والنظيف بدون أي جمل import نهائياً -->
+    <!-- السكريبت المباشر والنظيف -->
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // 🔐 بيانات الربط الآمنة
+        // 🔐 بيانات الربط الآمنة بسوبابيز
         const SUPABASE_URL = "https://wiugwyhpuhokhocttwbq.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_zzDhn9DNIAdjJLn8aNzKzA_4IapbzcL";
         
-        // جلب عميل السوبابيز من الـ window مباشرة لضمان الاستقرار
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ⏰ مواعيد الحجوزات بنظام 12 ساعة
@@ -71,12 +84,49 @@
           });
         }
 
-        function genId() { return Math.random().toString(36).slice(2, 9).toUpperCase(); }
-        function openWA(phone, message) { window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(message)}`, "_blank"); }
-
-        function buildConfirmMsg(b) {
-          return `مرحباً ${b.name} 👋\n\n✅ *تم تأكيد حجزك في ${FIELD_NAME}* ⚽\n\n━━━━━━━━━━━━━━━━━━\n📅 التاريخ : ${formatDate(b.date)}\n⏰ الوقت   : ${b.time}\n⏱ المدة   : ${b.duration} ساعة\n💰 المبلغ  : ${b.price} جنيه\n━━━━━━━━━━━━━━━━━━\n\nبرجاء الحضور قبل الموعد بـ 10 دقائق 🙏\nنتمنى لك وقت ممتع! 🌟`;
-        }
+        // الأنماط والتنسيقات للواجهة
+        const S = {
+          root: { minHeight: "100vh", background: "#0f172a", color: "#f1f5f9", display: "flex", flexDirection: "column" },
+          contentWrapper: { flex: 1 },
+          header: { background: "#1e293b", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e" },
+          logo: { fontSize: 22, fontWeight: 800, color: "#22c55e" },
+          toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' },
+          page: { maxWidth: 820, margin: "0 auto", padding: "24px 16px", width: "100%", boxSizing: "border-box" },
+          hero: { textAlign: "center", padding: "20px 0" },
+          heroTitle: { fontSize: 32, fontWeight: 800, color: "#22c55e", margin: 0 },
+          heroSub: { color: "#94a3b8", marginTop: 8, fontSize: 16 },
+          card: { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 16, border: "1px solid #334155" },
+          label: { display: "block", color: "#94a3b8", marginBottom: 8, fontWeight: 600 },
+          dateInput: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 16 },
+          legendRow: { display: "flex", gap: 12, marginBottom: 16 },
+          chip: (color, bg) => ({ background: bg, color: color, borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 'bold' }),
+          slotsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12 },
+          slot: { padding: "16px 8px", borderRadius: 12, textAlign: "center", cursor: "pointer" },
+          slotFree: { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80" },
+          slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", cursor: "not-allowed", opacity: 0.8 },
+          slotTime: { display: "block", fontWeight: 800, fontSize: 15 },
+          slotLabel: { display: "block", fontSize: 12, marginTop: 4 },
+          overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 },
+          modalCard: { background: "#1e293b", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, border: "1px solid #334155" },
+          modalTitle: { color: "#22c55e", fontSize: 22, margin: 0, fontWeight: 800 },
+          formGroup: { marginBottom: 16 },
+          input: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 15 },
+          errMsg: { color: "#f87171", fontSize: 14, fontWeight: "bold", margin: "10px 0" },
+          row: { display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 20 },
+          btnGreen: { background: "#22c55e", color: "#0f172a", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 800, cursor: "pointer", fontSize: 15 },
+          btnGray: { background: "#334155", color: "#f1f5f9", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontSize: 15 },
+          loginCard: { background: "#1e293b", borderRadius: 16, padding: 32, maxWidth: 400, margin: "40px auto", border: "1px solid #334155" },
+          bookingCard: { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, border: "1px solid #334155" },
+          bookingTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+          bookingId: { color: "#22c55e", fontWeight: 700, marginLeft: 8 },
+          bookingName: { fontWeight: 700, fontSize: 16 },
+          bookingMid: { display: "flex", gap: 16, color: "#94a3b8", fontSize: 14, marginTop: 12 },
+          adminTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+          adminTitle: { fontSize: 22, margin: 0 },
+          tabs: { display: "flex", gap: 8 },
+          tab: { background: "#1e293b", color: "#94a3b8", border: "1px solid #334155", padding: "8px 16px", borderRadius: 8, cursor: "pointer" },
+          tabActive: { background: "#22c55e", color: "#0f172a", fontWeight: 800, border: "1px solid #22c55e", padding: "8px 16px", borderRadius: 8, cursor: "pointer" }
+        };
 
         function App() {
           const [view, setView] = useState("booking");
@@ -147,11 +197,11 @@
             setFormError("");
             if (!form.name.trim()) { setFormError("من فضلك أدخل الاسم"); return; }
             if (!form.phone.match(/^01[0-9]{9}$/)) { setFormError("رقم الواتس اب غير صحيح"); return; }
-            const dur = parseInt(form.duration);
+            const dur = 1;
             if (!isSlotAvailable(modal.time, dur)) { setFormError("الموعد غير متاح"); return; }
 
             const newBooking = {
-              id: genId(), name: form.name.trim(), phone: form.phone.trim(),
+              id: Math.random().toString(36).slice(2, 9).toUpperCase(), name: form.name.trim(), phone: form.phone.trim(),
               date: selectedDate, time: modal.time, duration: dur,
               price: calculateBookingPrice(modal.time, dur), status: "pending", paid: false
             };
@@ -182,35 +232,6 @@
           const adminDayAll = bookings.filter(b => b.date === adminDate);
           const pendingList = adminDayAll.filter(b => b.status === "pending");
           const confirmedList = adminDayAll.filter(b => b.status === "confirmed");
-
-          function StatusBadge({ status }) {
-            const map = {
-              pending: { bg: "#78350f", color: "#fbbf24", label: "⏳ الانتظار" },
-              confirmed: { bg: "#14532d", color: "#4ade80", label: "✅ مؤكد" },
-              cancelled: { bg: "#450a0a", color: "#f87171", label: "🚫 ملغي" },
-            };
-            const s = map[status] || map.pending;
-            return <span style={{ background: s.bg, color: s.color, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>{s.label}</span>;
-          }
-
-          function BookingCard({ b }) {
-            return (
-              <div style={S.bookingCard}>
-                <div style={S.bookingTop}>
-                  <div>
-                    <span style={S.bookingId}>#{b.id}</span>
-                    <span style={S.bookingName}>{b.name}</span>
-                  </div>
-                  <StatusBadge status={b.status} />
-                </div>
-                <div style={S.bookingMid}>
-                  <span>📱 {b.phone}</span>
-                  <span>⏰ {b.time} ({b.duration}س)</span>
-                  <span>💰 {b.price} ج</span>
-                </div>
-              </div>
-            );
-          }
 
           return (
             <div style={S.root}>
@@ -271,8 +292,18 @@
                               <button style={adminTab === "confirmed" ? S.tabActive : S.tab} onClick={() => setAdminTab("confirmed")}>✅ المؤكدة ({confirmedList.length})</button>
                             </div>
                           </div>
-                          {adminTab === "pending" && pendingList.map(b => <BookingCard key={b.id} b={b} />)}
-                          {adminTab === "confirmed" && confirmedList.map(b => <BookingCard key={b.id} b={b} />)}
+                          {adminTab === "pending" && pendingList.map(b => (
+                            <div key={b.id} style={S.bookingCard}>
+                              <div style={S.bookingTop}><span><b>{b.name}</b></span><span style={{color: '#fbbf24'}}>⏳ انتظار</span></div>
+                              <div style={S.bookingMid}><span>📱 {b.phone}</span><span>⏰ {b.time}</span><span>💰 {b.price} ج</span></div>
+                            </div>
+                          ))}
+                          {adminTab === "confirmed" && confirmedList.map(b => (
+                            <div key={b.id} style={S.bookingCard}>
+                              <div style={S.bookingTop}><span><b>{b.name}</b></span><span style={{color: '#4ade80'}}>✅ مؤكد</span></div>
+                              <div style={S.bookingMid}><span>📱 {b.phone}</span><span>⏰ {b.time}</span><span>💰 {b.price} ج</span></div>
+                            </div>
+                          ))}
                         </>
                       )}
                     </div>
@@ -305,50 +336,10 @@
           );
         }
 
-        const S = {
-          root: { minHeight: "100vh", background: "#0f172a", fontFamily: "system-ui, -apple-system, sans-serif", direction: "rtl", color: "#f1f5f9", display: "flex", flexDirection: "column" },
-          contentWrapper: { flex: 1 },
-          header: { background: "#1e293b", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e" },
-          logo: { fontSize: 22, fontWeight: 800, color: "#22c55e" },
-          toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' },
-          page: { maxWidth: 820, margin: "0 auto", padding: "24px 16px", width: "100%", boxSizing: "border-box" },
-          hero: { textAlign: "center", padding: "20px 0" },
-          heroTitle: { fontSize: 32, fontWeight: 800, color: "#22c55e", margin: 0 },
-          heroSub: { color: "#94a3b8", marginTop: 8, fontSize: 16 },
-          card: { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 16, border: "1px solid #334155" },
-          label: { display: "block", color: "#94a3b8", marginBottom: 8, fontWeight: 600 },
-          dateInput: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 16 },
-          legendRow: { display: "flex", gap: 12, marginBottom: 16 },
-          chip: (color, bg) => ({ background: bg, color: color, borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 'bold' }),
-          slotsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12 },
-          slot: { padding: "16px 8px", borderRadius: 12, textAlign: "center", cursor: "pointer", transition: "all 0.2s" },
-          slotFree: { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80" },
-          slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", cursor: "not-allowed", opacity: 0.8 },
-          slotTime: { display: "block", fontWeight: 800, fontSize: 15 },
-          slotLabel: { display: "block", fontSize: 12, marginTop: 4 },
-          overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 },
-          modalCard: { background: "#1e293b", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, border: "1px solid #334155" },
-          modalTitle: { color: "#22c55e", fontSize: 22, margin: 0, fontWeight: 800 },
-          formGroup: { marginBottom: 16 },
-          input: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 15 },
-          errMsg: { color: "#f87171", fontSize: 14, fontWeight: "bold", margin: "10px 0" },
-          row: { display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 20 },
-          btnGreen: { background: "#22c55e", color: "#0f172a", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 800, cursor: "pointer", fontSize: 15 },
-          btnGray: { background: "#334155", color: "#f1f5f9", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontSize: 15 },
-          loginCard: { background: "#1e293b", borderRadius: 16, padding: 32, maxWidth: 400, margin: "40px auto", border: "1px solid #334155" },
-          bookingCard: { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, border: "1px solid #334155" },
-          bookingTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-          bookingId: { color: "#22c55e", fontWeight: 700, marginLeft: 8 },
-          bookingName: { fontWeight: 700, fontSize: 16 },
-          bookingMid: { display: "flex", gap: 16, color: "#94a3b8", fontSize: 14, marginTop: 12 },
-          adminTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-          adminTitle: { fontSize: 22, margin: 0 },
-          tabs: { display: "flex", gap: 8 },
-          tab: { background: "#1e293b", color: "#94a3b8", border: "1px solid #334155", padding: "8px 16px", borderRadius: 8, cursor: "pointer" },
-          tabActive: { background: "#22c55e", color: "#0f172a", fontWeight: 800, border: "1px solid #22c55e", padding: "8px 16px", borderRadius: 8, cursor: "pointer" }
-        };
-
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        // إطلاق التطبيق بداخل حاوية المنتصف
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
     </script>
 </body>
 </html>
