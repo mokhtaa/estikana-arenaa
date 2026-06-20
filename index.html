@@ -15,7 +15,6 @@
         }
     </style>
 
-    <!-- استدعاء المكتبات المستقرة -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
@@ -318,7 +317,6 @@
                       <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={S.input} placeholder="مثال: 01xxxxxxxxx" />
                     </div>
 
-                    <!-- ⏱️ خانة اختيار مدة الحجز (عدد الساعات) المضافة حديثاً -->
                     <div style={S.formGroup}>
                       <label style={S.label}>⏱️ مدة الحجز (عدد الساعات)</label>
                       <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={S.select}>
