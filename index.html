@@ -70,13 +70,15 @@
 
         function todayStr() { return new Date().toISOString().split("T")[0]; }
 
+        // الحصول على الشهر الحالي بصيغة YYYY-MM كقيمة افتراضية
+        function currentMonthStr() { return new Date().toISOString().substring(0, 7); }
+
         const S = {
           root: { minHeight: "100vh", background: "#0f172a", display: "flex", flexDirection: "column" },
           header: { background: "#111827", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e" },
           logoText: { fontSize: 20, fontWeight: "bold", color: "#22c55e" },
-          page: { maxWidth: "1000px", margin: "0 auto", padding: "24px 16px", width: "100%", boxSizing: "border-box" },
+          page: { maxWidth: "1000px", margin: "0 auto", padding: "24px 16px", width: "100%", boxSizing: "border-box", flex: 1 },
           
-          // المربعات الإحصائية للإيرادات
           statsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "24px" },
           statCard: (borderColor) => ({ background: "#1e293b", borderRadius: "12px", padding: "16px", borderRight: `5px solid ${borderColor}`, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }),
           
@@ -93,15 +95,17 @@
           actionRow: { display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap", marginTop: "12px" },
           actionBtn: (bg, color) => ({ background: bg, color: color, border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "14px" }),
           
-          // ستايلات المودال والمدخلات لصفحة الحجز الرئيسي
           card: { background: "#1e293b", borderRadius: "12px", padding: "16px", marginBottom: "16px", border: "1px solid #334155" },
           dateInput: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", fontSize: 16 },
+          select: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "10px 14px", borderRadius: 8, fontSize: 15, colorScheme: "dark", cursor: "pointer" },
           slotsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12 },
           slotFree: { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80", padding: "16px 8px", borderRadius: 12, textAlign: "center", cursor: "pointer" },
-          slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", padding: "16px 8px", borderRadius: 12, textAlign: "center", opacity: 0.8 },
           overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
           modalCard: { background: "#1e293b", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, border: "1px solid #334155" },
-          toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' }
+          toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' },
+          
+          // ستايل أسفل الصفحة (Footer) المطور لحقوق كابتن مختار
+          footer: { background: "#111827", padding: "16px text-center", textAlign: "center", borderTop: "1px solid #1e293b", color: "#94a3b8", fontSize: "14px", marginTop: "auto" }
         };
 
         function App() {
@@ -114,6 +118,10 @@
           const [formError, setFormError] = useState("");
           const [toast, setToast] = useState({ msg: "", type: "success" });
           const [adminTab, setAdminTab] = useState("pending");
+          
+          // متغيرات الفلترة للشهر والتقرير المختار
+          const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
+          const [displayedReport, setDisplayedReport] = useState({ month: currentMonthStr(), total: 0 });
 
           useEffect(() => {
             fetchBookings();
@@ -122,6 +130,13 @@
               .subscribe();
             return () => { channels.unsubscribe(); };
           }, []);
+
+          // تحديث التقرير تلقائياً عند تحميل البيانات لأول مرة بناءً على الشهر المختار
+          useEffect(() => {
+            if (bookings.length > 0) {
+              generateMonthlyReport();
+            }
+          }, [bookings]);
 
           async function fetchBookings() {
             try {
@@ -164,7 +179,6 @@
             }
           }
 
-          // تحديث حالة الحجز + فتح رسالة الواتساب النصية آلياً عند التأكيد
           async function updateStatus(booking, newStatus) {
             const { error } = await supabaseClient.from('bookings').update({ status: newStatus }).eq('id', booking.id);
             if (error) {
@@ -172,7 +186,6 @@
             } else {
               showToast(newStatus === "confirmed" ? "🎉 تم تأكيد الحجز" : "❌ تم الإلغاء");
               
-              // كود فتح الواتساب مجهز بالنص التلقائي المطلوب
               if (newStatus === "confirmed") {
                 const message = `أهلاً بك كابتن ${booking.name} 🏟️ من ملعب استكانه أرينا، تم تأكيد حجزك بنجاح.\n📅 التاريخ: ${booking.date}\n⏰ الساعة: ${booking.time}\n⏱️ المدة: ${booking.duration} ساعة\n💰 الحساب الإجمالي: ${booking.price} جنيه\nتنورنا في أي وقت! ⚽`;
                 const whatsappUrl = `https://wa.me/2${booking.phone}?text=${encodeURIComponent(message)}`;
@@ -182,7 +195,6 @@
             }
           }
 
-          // تبديل وتحديث حالة الدفع (مدفوع / غير مدفوع)
           async function togglePaid(id, currentPaidStatus) {
             const { error } = await supabaseClient.from('bookings').update({ paid: !currentPaidStatus }).eq('id', id);
             if (!error) {
@@ -191,23 +203,27 @@
             }
           }
 
-          // تصفية وعمل الإحصائيات الحسابية المطلوبة بدقة
+          // تجميع كل الشهور المتاحة في قاعدة البيانات ديناميكياً لإضافتها للقائمة المنسدلة
+          const availableMonths = Array.from(new Set(bookings.filter(b => b.status === "confirmed" && b.date).map(b => b.date.substring(0, 7))));
+          if (!availableMonths.includes(currentMonthStr())) {
+            availableMonths.push(currentMonthStr());
+          }
+          availableMonths.sort().reverse(); // ترتيب الشهور من الأحدث للأقدم
+
+          // وظيفة توليد وإظهار تقرير الشهر المحدد عند الضغط على الزر
+          function generateMonthlyReport() {
+            const confirmedInMonth = bookings.filter(b => b.status === "confirmed" && b.date && b.date.substring(0, 7) === selectedMonth);
+            const total = confirmedInMonth.reduce((sum, b) => sum + Number(b.price || 0), 0);
+            setDisplayedReport({ month: selectedMonth, total: total });
+            showToast(`📊 تم عرض تقرير شهر ${selectedMonth}`);
+          }
+
           const pendingList = bookings.filter(b => b.status === "pending");
           const confirmedList = bookings.filter(b => b.status === "confirmed");
 
-          // 1. حساب مربعات الإيرادات المختلفة
           const totalRevenue = confirmedList.reduce((sum, b) => sum + Number(b.price || 0), 0);
           const paidRevenue = confirmedList.filter(b => b.paid).reduce((sum, b) => sum + Number(b.price || 0), 0);
           const pendingRevenue = pendingList.reduce((sum, b) => sum + Number(b.price || 0), 0);
-
-          // 2. حساب التقرير الشهري للإيرادات المؤكدة
-          const monthlyReport = {};
-          confirmedList.forEach(b => {
-            if (b.date) {
-              const month = b.date.substring(0, 7); // يجلب الـ السنة والشهر مثل '2026-06'
-              monthlyReport[month] = (monthlyReport[month] || 0) + Number(b.price || 0);
-            }
-          });
 
           return (
             <div style={S.root}>
@@ -224,7 +240,7 @@
               {toast.msg && <div style={{ ...S.toast, background: toast.type === "warn" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
 
               {loading ? (
-                <div style={{ textTransform:'uppercase', color: "#94a3b8", textAlign: "center", padding: "100px", fontWeight: "bold" }}>🔄 جاري الاتصال بالخادم...</div>
+                <div style={{ color: "#94a3b8", textAlign: "center", padding: "100px", fontWeight: "bold" }}>🔄 جاري الاتصال بالخادم...</div>
               ) : (
                 view === "booking" ? (
                   <div style={S.page}>
@@ -262,19 +278,26 @@
                       </div>
                     </div>
 
-                    {/* التقرير الشهري المفصل للإيراد والفلوس */}
-                    <div style={{...S.card, background: '#111827', marginBottom: '24px'}}>
-                      <h3 style={{margin: '0 0 12px 0', color: '#22c55e'}}>📊 تقرير الإيرادات الشهري:</h3>
-                      {Object.keys(monthlyReport).length === 0 ? <p style={{color:'#64748b', fontSize:'14px', margin:0}}>لا توجد شهور مسجلة بعد.</p> : (
-                        <div style={{display: 'flex', gap: '20px', flexWrap: 'wrap'}}>
-                          {Object.entries(monthlyReport).map(([month, val]) => (
-                            <div key={month} style={{background: '#1e293b', padding: '10px 16px', borderRadius: '8px', border: '1px solid #334155'}}>
-                              <span style={{color:'#94a3b8', fontSize:'13px'}}>شهر ({month}): </span>
-                              <span style={{fontWeight:'bold', color: '#4ade80'}}>{val} ج</span>
-                            </div>
+                    {/* التقرير الشهري المطور والقابل للتحديد المخصص الفوري */}
+                    <div style={{...S.card, background: '#111827', marginBottom: '24px', padding: '20px'}}>
+                      <h3 style={{margin: '0 0 16px 0', color: '#22c55e', fontSize: '17px'}}>📊 ميزه تقارير الأرباح الشهرية المخصصة:</h3>
+                      
+                      <div style={{display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px'}}>
+                        <label style={{color: '#94a3b8', fontSize: '14px'}}>اختار الشهر المستهدف:</label>
+                        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} style={S.select}>
+                          {availableMonths.map(m => (
+                            <option key={m} value={m}>{m}</option>
                           ))}
-                        </div>
-                      )}
+                        </select>
+                        <button onClick={generateMonthlyReport} style={{background: '#22c55e', color: '#0f172a', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px'}}>
+                          إظهر التقرير الحالي 🔍
+                        </button>
+                      </div>
+
+                      <div style={{background: '#1e293b', padding: '14px 20px', borderRadius: '8px', border: '1px solid #334155', display: 'inline-block'}}>
+                        <span style={{color:'#94a3b8', fontSize:'14px'}}>إيرادات شهر (<strong style={{color: '#fff'}}>{displayedReport.month}</strong>) المؤكدة هي: </span>
+                        <span style={{fontWeight:'bold', fontSize: '20px', color: '#4ade80', marginRight: '6px'}}>{displayedReport.total} جنيه مصري</span>
+                      </div>
                     </div>
 
                     <div style={S.adminRow}>
@@ -351,6 +374,11 @@
                   </div>
                 </div>
               )}
+
+              {/* شريط ذيل الصفحة لإبراز اسم المطور الفخم */}
+              <footer style={S.footer}>
+                <div>تطوير بواسطة كابتن: <strong style={{color: '#22c55e'}}>Mokhtar Emad</strong> 🚀 © ٢٠٢٦ جميع الحقوق محفوظة لملعب استكانه أرينا.</div>
+              </footer>
             </div>
           );
         }
