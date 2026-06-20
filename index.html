@@ -29,23 +29,38 @@
 
         const FIELD_NAME = "استكانه أرينا";
 
-        // دالة تحويل التنسيق العربي إلى ساعة رقمية بنظام 24 ساعة للحسابات الداخلية
+        // 🛠️ دالة آمنة ومعدلة لتحويل المواعيد إلى نظام 24 ساعة بدون كراش وحل مشكلة الشاشة البيضاء
         function parseTo24Hour(timeStr) {
-          const hour = parseInt(timeStr.split(":")[0]);
-          if (timeStr.includes("ظهراً") || timeStr.includes("عصراً")) {
-            return hour; // الساعات 1، 2، 3، 4 تبقى كما هي في النهار (1، 2، 3، 4)
+          if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0;
+          
+          try {
+            const hour = parseInt(timeStr.split(":")[0]);
+            
+            // إذا كان الوقت قادم من البيانات القديمة مباشرة بنظام 24 ساعة
+            if (!timeStr.includes("ظهراً") && !timeStr.includes("عصراً") && !timeStr.includes("مساءً")) {
+              return hour;
+            }
+
+            // المواعيد النهارية (1 ظهراً = 13، 2 ظهراً = 14، 3 عصراً = 15، 4 عصراً = 16)
+            if (timeStr.includes("ظهراً") || timeStr.includes("عصراً")) {
+              return hour + 12; 
+            }
+            
+            // المواعيد المسائية (5 مساءً = 17، 6 مساءً = 18 ... حتى 11 مساءً = 23)
+            if (timeStr.includes("مساءً")) {
+              if (hour === 12) return 24; // 12 مساءً (منتصف الليل)
+              return hour + 12;
+            }
+            return hour;
+          } catch (e) {
+            return 0; // حماية ضد أي صيغة غريبة
           }
-          if (timeStr.includes("مساءً")) {
-            return hour === 12 ? 24 : hour + 12; // تحويل الساعات من 5 لـ 12 إلى نظام 24 (أي 5 م تصبح 17، و 6 م تصبح 18... إلخ)
-          }
-          return hour;
         }
 
-        // 💰 حساب السعر بناءً على الموعد الجديد
+        // 💰 حساب السعر: من 1 ظهراً (13) إلى 6 مساءً (18) بـ 100ج | من 7 مساءً (19) لـ 12 مساءً (24) بـ 150ج
         function getPriceForSlot(timeStr) {
           const hour24 = parseTo24Hour(timeStr);
-          // من 1 ظهراً (ساعة 1) إلى 6 مساءً (ساعة 18 مشمولة) بـ 100 جنيه، ومن 7 مساءً (19) إلى 12 مساءً (24) بـ 150 جنيه
-          return hour24 >= 1 && hour24 <= 18 ? 100 : 150;
+          return hour24 >= 13 && hour24 <= 18 ? 100 : 150;
         }
 
         function calculateBookingPrice(startTime, duration) {
@@ -311,7 +326,6 @@
                           );
                         })}
                       </div>
-                      {/* 📋 تحديث نص الملاحظة السعرية الجديد أسفل المواعيد */}
                       <p style={S.priceNote}>☀️ نهاراً (1ظهراً إلى 6مساءً): 100 ج/ساعة | 🌙 ليلاً (7مساءً إلى 12مساءً): 150 ج/ساعة</p>
                     </div>
                   ) : (
@@ -367,7 +381,7 @@
                           )}
 
                           {adminTab === "pending" && (pendingList.length === 0 ? <div style={S.empty}>🎉 لا يوجد حجوزات في انتظار التأكيد لهذا اليوم</div> : pendingList.map(b => <BookingCard key={b.id} b={b} />))}
-                          {adminTab === "confirmed" && (confirmedList.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مؤكدة في هذا اليوم</div> : confirmedList.map(b => <BookingCard key={b.id} b={b} />))}
+                          {adminTab === "confirmed" && (confirmedList.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مؤكدة in هذا اليوم</div> : confirmedList.map(b => <BookingCard key={b.id} b={b} />))}
                           {adminTab === "all" && (adminDayAll.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مسجلة في هذا اليوم</div> : [...adminDayAll].sort((a, b) => parseTo24Hour(a.time) - parseTo24Hour(b.time)).map(b => <BookingCard key={b.id} b={b} />))}
 
                           {adminTab === "report" && (
@@ -425,15 +439,13 @@
                 )}
               </div>
 
-              {/* 🌟 تذييل الصفحة بتوقيعك كمطور للموقع */}
               <footer style={S.footer}>
                 <div>جميع الحقوق محفوظة لملعب {FIELD_NAME} &copy; {new Date().getFullYear()}</div>
                 <div style={{ marginTop: 4, fontSize: 13, color: "#94a3b8" }}>
-                  تطوير بواسطة: <span style={S.devName}>Mokhtar_Emad</span> 
+                  تطوير بواسطة: <span style={S.devName}>Mokhtar_Emad</span> 🚀
                 </div>
               </footer>
 
-              {/* مودال حجز جديد */}
               {modal && (
                 <div style={S.overlay} onClick={() => setModal(null)}>
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
@@ -464,7 +476,6 @@
                 </div>
               )}
 
-              {/* مودال معاينة الواتساب والتأكيد */}
               {confirmModal && (
                 <div style={S.overlay} onClick={() => setConfirmModal(null)}>
                   <div style={{ ...S.modalCard, maxWidth: 460 }} onClick={e => e.stopPropagation()}>
@@ -478,7 +489,6 @@
                 </div>
               )}
 
-              {/* مودال تفاصيل وإدارة الحجز */}
               {detailModal && (
                 <div style={S.overlay} onClick={() => setDetailModal(null)}>
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
