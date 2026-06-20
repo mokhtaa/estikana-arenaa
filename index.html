@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>استكانه أرينا - الإدارة والعمليات</title>
+    <title>استكانه أرينا - لوحة الإدارة الاحترافية</title>
     
     <style>
         body {
@@ -47,10 +47,7 @@
             const hour = parseInt(timeStr.split(":")[0]);
             if (!timeStr.includes("ظهراً") && !timeStr.includes("عصراً") && !timeStr.includes("مساءً")) return hour;
             if (timeStr.includes("ظهراً") || timeStr.includes("عصراً")) return hour === 12 ? 12 : hour + 12; 
-            if (timeStr.includes("مساءً")) {
-              if (hour === 12) return 24;
-              return hour + 12;
-            }
+            if (timeStr.includes("مساءً")) return hour === 12 ? 24 : hour + 12;
             return hour;
           } catch (e) { return 0; }
         }
@@ -73,62 +70,37 @@
 
         function todayStr() { return new Date().toISOString().split("T")[0]; }
 
-        // التنسيقات المتوافقة مع واجهتك الداكنة اللطيفة والمنظمة
         const S = {
           root: { minHeight: "100vh", background: "#0f172a", display: "flex", flexDirection: "column" },
           header: { background: "#111827", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e" },
-          logoWrapper: { display: "flex", alignItems: "center", gap: "6px" },
           logoText: { fontSize: 20, fontWeight: "bold", color: "#22c55e" },
-          headerLink: (isActive) => ({ color: isActive ? "#22c55e" : "#9ca3af", fontSize: 14, textDecoration: "none", display: "flex", alignItems: "center", gap: "4px", fontWeight: 'bold' }),
-          page: { maxWidth: "950px", margin: "0 auto", padding: "24px 16px", width: "100%", boxSizing: "border-box" },
+          page: { maxWidth: "1000px", margin: "0 auto", padding: "24px 16px", width: "100%", boxSizing: "border-box" },
+          
+          // المربعات الإحصائية للإيرادات
+          statsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "24px" },
+          statCard: (borderColor) => ({ background: "#1e293b", borderRadius: "12px", padding: "16px", borderRight: `5px solid ${borderColor}`, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }),
+          
           adminRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" },
-          adminTitle: { fontSize: 22, fontWeight: "bold", margin: 0, color: "#fff" },
           tabs: { display: "flex", gap: "8px" },
           tabBtn: (active) => ({
-            background: active ? "#22c55e" : "#1e293b",
-            color: active ? "#0f172a" : "#9ca3af",
-            border: active ? "1px solid #22c55e" : "1px solid #334155",
-            padding: "8px 16px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: "bold",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px"
+            background: active ? "#22c55e" : "#1e293b", color: active ? "#0f172a" : "#9ca3af",
+            border: active ? "1px solid #22c55e" : "1px solid #334155", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold"
           }),
-          card: { background: "#1e293b", borderRadius: "12px", padding: "16px", marginBottom: "16px", border: "1px solid #334155" },
-          label: { display: "block", color: "#94a3b8", marginBottom: 8, fontWeight: 600 },
-          dateInput: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 16 },
-          legendRow: { display: "flex", gap: 12, marginBottom: 16 },
-          chip: (color, bg) => ({ background: bg, color: color, borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 'bold' }),
-          slotsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12 },
-          slot: { padding: "16px 8px", borderRadius: 12, textAlign: "center", cursor: "pointer" },
-          slotFree: { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80" },
-          slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", cursor: "not-allowed", opacity: 0.8 },
-          slotTime: { display: "block", fontWeight: 800, fontSize: 15 },
-          slotLabel: { display: "block", fontSize: 12, marginTop: 4 },
           
-          // كروت الحجوزات ولوحة التحكم المطورة بالأزرار وخانة الإيرادات
-          statsCard: { background: "#1e293b", borderRadius: "12px", padding: "16px", marginBottom: "20px", border: "1px solid #334155", display: "flex", justifyContent: "space-between", alignItems: "center" },
           bookingCard: { background: "#151f32", borderRadius: "8px", padding: "18px", marginBottom: "12px", border: "1px solid #1e293b" },
           bookingHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" },
-          bookingName: { fontSize: 18, fontWeight: "bold", color: "#fff" },
-          statusBadge: (type) => ({ color: type === "pending" ? "#f59e0b" : "#22c55e", fontWeight: "bold", display: "flex", alignItems: "center", gap: "4px" }),
           bookingDetails: { display: "flex", gap: "20px", color: "#9ca3af", fontSize: 15, flexWrap: "wrap", marginBottom: "12px" },
-          detailItem: { display: "flex", alignItems: "center", gap: "6px" },
-          actionRow: { display: "flex", gap: "8px", justifyContent: "flex-end" },
-          actionBtn: (bg, color) => ({ background: bg, color: color, border: "none", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "14px" }),
+          actionRow: { display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap", marginTop: "12px" },
+          actionBtn: (bg, color) => ({ background: bg, color: color, border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "14px" }),
           
-          // المودال
-          overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 },
+          // ستايلات المودال والمدخلات لصفحة الحجز الرئيسي
+          card: { background: "#1e293b", borderRadius: "12px", padding: "16px", marginBottom: "16px", border: "1px solid #334155" },
+          dateInput: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", fontSize: 16 },
+          slotsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12 },
+          slotFree: { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80", padding: "16px 8px", borderRadius: 12, textAlign: "center", cursor: "pointer" },
+          slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", padding: "16px 8px", borderRadius: 12, textAlign: "center", opacity: 0.8 },
+          overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
           modalCard: { background: "#1e293b", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, border: "1px solid #334155" },
-          modalTitle: { color: "#22c55e", fontSize: 22, margin: 0, fontWeight: 800 },
-          formGroup: { marginBottom: 16 },
-          input: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 15 },
-          select: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 15, cursor: "pointer" },
-          row: { display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 20 },
-          btnGreen: { background: "#22c55e", color: "#0f172a", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 800, cursor: "pointer", fontSize: 15 },
-          btnGray: { background: "#334155", color: "#f1f5f9", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontSize: 15 },
           toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' }
         };
 
@@ -161,33 +133,8 @@
 
           useEffect(() => {
             const params = new URLSearchParams(window.location.search);
-            if (params.get("view") === "admin") { setView("admin"); } 
-            else { setView("booking"); }
+            if (params.get("view") === "admin") setView("admin");
           }, []);
-
-          function isTimeInPast(timeStr, dateStr) {
-            if (dateStr !== todayStr()) return false;
-            const now = new Date();
-            return parseTo24Hour(timeStr) <= now.getHours();
-          }
-
-          const dayBookings = bookings.filter(b => b.date === selectedDate && b.status !== "cancelled");
-          const bookedSlots = new Set();
-          dayBookings.forEach(b => {
-            const dur = parseInt(b.duration || 1);
-            for (let i = 0; i < dur; i++) {
-              const idx = TIME_SLOTS.indexOf(b.time);
-              if (idx !== -1 && idx + i < TIME_SLOTS.length) bookedSlots.add(TIME_SLOTS[idx + i]);
-            }
-          });
-
-          function isSlotAvailable(time, duration = 1) {
-            const idx = TIME_SLOTS.indexOf(time);
-            for (let i = 0; i < duration; i++) {
-              if (idx + i >= TIME_SLOTS.length || bookedSlots.has(TIME_SLOTS[idx + i])) return false;
-            }
-            return true;
-          }
 
           function showToast(msg, type = "success") {
             setToast({ msg, type });
@@ -196,11 +143,10 @@
 
           async function handleBook() {
             setFormError("");
-            if (!form.name.trim()) { setFormError("من فضلك أدخل الاسم"); return; }
-            if (!form.phone.match(/^01[0-9]{9}$/)) { setFormError("رقم الواتس اب غير صحيح"); return; }
+            if (!form.name.trim()) { setFormError("الاسم مطلوب"); return; }
+            if (!form.phone.match(/^01[0-9]{9}$/)) { setFormError("رقم الهاتف غير صحيح"); return; }
+            
             const dur = parseInt(form.duration);
-            if (!isSlotAvailable(modal.time, dur)) { setFormError("عذراً، الساعات المحددة تتداخل مع حجز آخر!"); return; }
-
             const calculatedPrice = calculateBookingPrice(modal.time, dur);
 
             const newBooking = {
@@ -210,152 +156,179 @@
             };
 
             const { error } = await supabaseClient.from('bookings').insert([newBooking]);
-            if (error) { showToast("حدث خطأ أثناء حفظ الحجز", "warn"); } 
+            if (error) { showToast("حدث خطأ في الشبكة", "warn"); } 
             else {
               setModal(null); setForm({ name: "", phone: "", duration: "1" });
-              showToast("✅ تم إرسال طلب حجزك بنجاح وفي انتظار التأكيد!");
+              showToast("✅ تم إرسال طلب الحجز بنجاح!");
               fetchBookings();
             }
           }
 
-          // تغيير حالة الحجز (تأكيد / إلغاء) مباشرة في قاعدة البيانات
-          async function updateStatus(id, newStatus) {
-            const { error } = await supabaseClient.from('bookings').update({ status: newStatus }).eq('id', id);
+          // تحديث حالة الحجز + فتح رسالة الواتساب النصية آلياً عند التأكيد
+          async function updateStatus(booking, newStatus) {
+            const { error } = await supabaseClient.from('bookings').update({ status: newStatus }).eq('id', booking.id);
             if (error) {
-              showToast("فشل تحديث حالة الحجز", "warn");
+              showToast("فشل تحديث الحالة", "warn");
             } else {
-              showToast(newStatus === "confirmed" ? "🎉 تم تأكيد الحجز بنجاح" : "❌ تم إلغاء الحجز");
+              showToast(newStatus === "confirmed" ? "🎉 تم تأكيد الحجز" : "❌ تم الإلغاء");
+              
+              // كود فتح الواتساب مجهز بالنص التلقائي المطلوب
+              if (newStatus === "confirmed") {
+                const message = `أهلاً بك كابتن ${booking.name} 🏟️ من ملعب استكانه أرينا، تم تأكيد حجزك بنجاح.\n📅 التاريخ: ${booking.date}\n⏰ الساعة: ${booking.time}\n⏱️ المدة: ${booking.duration} ساعة\n💰 الحساب الإجمالي: ${booking.price} جنيه\nتنورنا في أي وقت! ⚽`;
+                const whatsappUrl = `https://wa.me/2${booking.phone}?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+              }
               fetchBookings();
             }
           }
 
-          // تصفية وقوائم لوحة التحكم
+          // تبديل وتحديث حالة الدفع (مدفوع / غير مدفوع)
+          async function togglePaid(id, currentPaidStatus) {
+            const { error } = await supabaseClient.from('bookings').update({ paid: !currentPaidStatus }).eq('id', id);
+            if (!error) {
+              showToast("🔄 تم تحديث حالة الدفع");
+              fetchBookings();
+            }
+          }
+
+          // تصفية وعمل الإحصائيات الحسابية المطلوبة بدقة
           const pendingList = bookings.filter(b => b.status === "pending");
           const confirmedList = bookings.filter(b => b.status === "confirmed");
 
-          // حساب الإيرادات الإجمالية من الحجوزات المؤكدة
+          // 1. حساب مربعات الإيرادات المختلفة
           const totalRevenue = confirmedList.reduce((sum, b) => sum + Number(b.price || 0), 0);
+          const paidRevenue = confirmedList.filter(b => b.paid).reduce((sum, b) => sum + Number(b.price || 0), 0);
+          const pendingRevenue = pendingList.reduce((sum, b) => sum + Number(b.price || 0), 0);
+
+          // 2. حساب التقرير الشهري للإيرادات المؤكدة
+          const monthlyReport = {};
+          confirmedList.forEach(b => {
+            if (b.date) {
+              const month = b.date.substring(0, 7); // يجلب الـ السنة والشهر مثل '2026-06'
+              monthlyReport[month] = (monthlyReport[month] || 0) + Number(b.price || 0);
+            }
+          });
 
           return (
             <div style={S.root}>
               <header style={S.header}>
-                <div style={S.logoWrapper}>
-                  <span style={S.logoText}>استكانه أرينا</span>
-                  <span style={{ fontSize: "20px" }}>⚽</span>
+                <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                  <span style={S.logoText}>استكانه أرينا</span><span>⚽</span>
                 </div>
                 <div style={{display: 'flex', gap: '15px'}}>
-                  <a href="?view=booking" style={S.headerLink(view === "booking")}>صفحة الحجز</a>
-                  <a href="?view=admin" style={S.headerLink(view === "admin")}>لوحة الإدارة 🛠️</a>
+                  <a href="?view=booking" style={{color: '#9ca3af', textDecoration:'none', fontWeight:'bold'}}>صفحة الحجز</a>
+                  <a href="?view=admin" style={{color: '#22c55e', textDecoration:'none', fontWeight:'bold'}}>لوحة الإدارة 🛠️</a>
                 </div>
               </header>
 
               {toast.msg && <div style={{ ...S.toast, background: toast.type === "warn" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
 
               {loading ? (
-                <div style={{ color: "#94a3b8", textAlign: "center", padding: "100px", fontSize: "18px", fontWeight: "bold" }}>🔄 جاري تحميل بيانات الملعب...</div>
+                <div style={{ textTransform:'uppercase', color: "#94a3b8", textAlign: "center", padding: "100px", fontWeight: "bold" }}>🔄 جاري الاتصال بالخادم...</div>
               ) : (
                 view === "booking" ? (
                   <div style={S.page}>
                     <div style={{ textAlign: "center", padding: "20px 0" }}>
                       <h1 style={{ fontSize: 32, fontWeight: 800, color: "#22c55e", margin: 0 }}>احجز ملعبك دلوقتي</h1>
-                      <p style={{ color: "#94a3b8", marginTop: 8, fontSize: 16 }}>اختار اليوم والساعة المناسبة وابعت طلبك في ثواني</p>
                     </div>
                     <div style={S.card}>
                       <label style={S.label}>📅 اختار يوم الحجز</label>
                       <input type="date" value={selectedDate} min={todayStr()} onChange={e => setSelectedDate(e.target.value)} style={S.dateInput} />
                     </div>
-                    <div style={S.legendRow}>
-                      <span style={S.chip("#4ade80", "#14532d")}>🟩 متاح الحجز</span>
-                      <span style={S.chip("#f87171", "#450a0a")}>🟥 محجوز أو مضى</span>
-                    </div>
                     <div style={S.slotsGrid}>
-                      {TIME_SLOTS.map(time => {
-                        const booked = bookedSlots.has(time);
-                        const past = isTimeInPast(time, selectedDate);
-                        const unavailable = booked || past;
-                        return (
-                          <div key={time} onClick={() => !unavailable && setModal({ time })} style={{ ...S.slot, ...(unavailable ? S.slotBooked : S.slotFree) }}>
-                            <span style={S.slotTime}>{time}</span>
-                            <span style={S.slotLabel}>{booked ? "محجوز" : past ? "انتهى" : `${getPriceForSlot(time)} جنيه`}</span>
-                          </div>
-                        );
-                      })}
+                      {TIME_SLOTS.map(time => (
+                        <div key={time} onClick={() => setModal({ time })} style={S.slotFree}>
+                          <span>{time}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ) : (
                   <div style={S.page}>
                     
-                    {/* إحصائيات لوحة التحكم وخانة الإيرادات المكتشفة حديثاً */}
-                    <div style={S.statsCard}>
-                      <div>
-                        <span style={{color: '#94a3b8', fontSize: '14px', display: 'block'}}>إجمالي الإيرادات (الحجوزات المؤكدة)</span>
-                        <span style={{fontSize: '28px', fontWeight: 'bold', color: '#22c55e'}}>{totalRevenue} جنيه</span>
+                    {/* مربعات حساب الإيرادات وتفصيل الحالات المدفوعة */}
+                    <div style={S.statsGrid}>
+                      <div style={S.statCard("#22c55e")}>
+                        <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إجمالي الإيرادات المؤكدة</span>
+                        <span style={{fontSize: '24px', fontWeight: 'bold', color: '#fff'}}>{totalRevenue} ج</span>
                       </div>
-                      <div style={{textAlign: 'left'}}>
-                        <span style={{color: '#94a3b8', fontSize: '14px', display: 'block'}}>طلبات قيد الانتظار</span>
-                        <span style={{fontSize: '24px', fontWeight: 'bold', color: '#f59e0b', textAlign: 'center', display:'block'}}>{pendingList.length}</span>
+                      <div style={S.statCard("#3b82f6")}>
+                        <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إيراد مضمون (مدفوع بالفعل)</span>
+                        <span style={{fontSize: '24px', fontWeight: 'bold', color: '#3b82f6'}}>{paidRevenue} ج</span>
                       </div>
+                      <div style={S.statCard("#fbbf24")}>
+                        <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إيراد معلق (قيد الانتظار)</span>
+                        <span style={{fontSize: '24px', fontWeight: 'bold', color: '#fbbf24'}}>{pendingRevenue} ج</span>
+                      </div>
+                    </div>
+
+                    {/* التقرير الشهري المفصل للإيراد والفلوس */}
+                    <div style={{...S.card, background: '#111827', marginBottom: '24px'}}>
+                      <h3 style={{margin: '0 0 12px 0', color: '#22c55e'}}>📊 تقرير الإيرادات الشهري:</h3>
+                      {Object.keys(monthlyReport).length === 0 ? <p style={{color:'#64748b', fontSize:'14px', margin:0}}>لا توجد شهور مسجلة بعد.</p> : (
+                        <div style={{display: 'flex', gap: '20px', flexWrap: 'wrap'}}>
+                          {Object.entries(monthlyReport).map(([month, val]) => (
+                            <div key={month} style={{background: '#1e293b', padding: '10px 16px', borderRadius: '8px', border: '1px solid #334155'}}>
+                              <span style={{color:'#94a3b8', fontSize:'13px'}}>شهر ({month}): </span>
+                              <span style={{fontWeight:'bold', color: '#4ade80'}}>{val} ج</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div style={S.adminRow}>
                       <div style={S.tabs}>
-                        <button style={S.tabBtn(adminTab === "pending")} onClick={() => setAdminTab("pending")}>
-                          <span>الانتظار ({pendingList.length})</span>
-                          <span>⏳</span>
-                        </button>
-                        <button style={S.tabBtn(adminTab === "confirmed")} onClick={() => setAdminTab("confirmed")}>
-                          <span>المؤكدة ({confirmedList.length})</span>
-                          <span>✅</span>
-                        </button>
+                        <button style={S.tabBtn(adminTab === "pending")} onClick={() => setAdminTab("pending")}>⌛ الانتظار ({pendingList.length})</button>
+                        <button style={S.tabBtn(adminTab === "confirmed")} onClick={() => setAdminTab("confirmed")}>✅ المؤكدة ({confirmedList.length})</button>
                       </div>
-                      <h2 style={S.adminTitle}>📋 لوحة إدارة الحجوزات</h2>
+                      <h2 style={{fontSize: 20, margin: 0}}>📋 لوحة تحكم وإدارة العمليات</h2>
                     </div>
 
-                    {/* قائمة الحجوزات المرفقة بأزرار التحكم والتأكيد الفوري */}
+                    {/* عرض الطلبات بالبيانات والحالة والأزرار */}
                     {adminTab === "pending" && (
-                      pendingList.length === 0 ? <p style={{color: '#64748b', textAlign:'center', padding: '40px'}}>لا توجد طلبات في الانتظار حالياً.</p> :
+                      pendingList.length === 0 ? <p style={{textAlign:'center', color:'#64748b'}}>لا توجد طلبات معلقة</p> :
                       pendingList.map(b => (
                         <div key={b.id} style={S.bookingCard}>
                           <div style={S.bookingHeader}>
-                            <div style={S.statusBadge("pending")}>
-                              <span>انتظار</span>
-                              <span>⏳</span>
-                            </div>
-                            <div style={S.bookingName}>{b.name}</div>
+                            <span style={{color: '#fbbf24', fontWeight: 'bold'}}>⏳ قيد مراجعتك وعملية التأكيد</span>
+                            <span style={{fontSize: '18px', fontWeight: 'bold'}}>{b.name}</span>
                           </div>
                           <div style={S.bookingDetails}>
-                            <div style={S.detailItem}><span>{b.phone}</span><span>📱</span></div>
-                            <div style={S.detailItem}><span>التاريخ: {b.date}</span><span>📅</span></div>
-                            <div style={S.detailItem}><span>{b.time} ({b.duration}س)</span><span>⏰</span></div>
-                            <div style={S.detailItem}><span>{b.price} ج</span><span>💰</span></div>
+                            <div>📱 {b.phone}</div>
+                            <div>📅 التاريخ: {b.date}</div>
+                            <div>⏰ الوقت: {b.time} ({b.duration}س)</div>
+                            <div>💰 السعر المتوقع: {b.price} ج</div>
                           </div>
                           <div style={S.actionRow}>
-                            <button style={S.actionBtn("#ef4444", "#fff")} onClick={() => updateStatus(b.id, "cancelled")}>إلغاء الطلب ❌</button>
-                            <button style={S.actionBtn("#22c55e", "#0f172a")} onClick={() => updateStatus(b.id, "confirmed")}>تأكيد الحجز ومتاح الآن ✅</button>
+                            <button style={S.actionBtn("#ef4444", "#fff")} onClick={() => updateStatus(b, "cancelled")}>رفض وإلغاء ❌</button>
+                            <button style={S.actionBtn("#22c55e", "#0f172a")} onClick={() => updateStatus(b, "confirmed")}>تأكيد وإرسال واتساب ✅</button>
                           </div>
                         </div>
                       ))
                     )}
 
                     {adminTab === "confirmed" && (
-                      confirmedList.length === 0 ? <p style={{color: '#64748b', textAlign:'center', padding: '40px'}}>لا توجد حجوزات مؤكدة بعد.</p> :
+                      confirmedList.length === 0 ? <p style={{textAlign:'center', color:'#64748b'}}>لا توجد حجوزات مؤكدة</p> :
                       confirmedList.map(b => (
                         <div key={b.id} style={S.bookingCard}>
                           <div style={S.bookingHeader}>
-                            <div style={S.statusBadge("confirmed")}>
-                              <span>مؤكد</span>
-                              <span>✅</span>
-                            </div>
-                            <div style={S.bookingName}>{b.name}</div>
+                            <span style={{color: '#4ade80', fontWeight: 'bold'}}>
+                              الحالة: {b.paid ? "🟢 مدفوع ومستلم" : "🔴 غير مدفوع بعد"}
+                            </span>
+                            <span style={{fontSize: '18px', fontWeight: 'bold'}}>{b.name}</span>
                           </div>
                           <div style={S.bookingDetails}>
-                            <div style={S.detailItem}><span>{b.phone}</span><span>📱</span></div>
-                            <div style={S.detailItem}><span>التاريخ: {b.date}</span><span>📅</span></div>
-                            <div style={S.detailItem}><span>{b.time} ({b.duration}س)</span><span>⏰</span></div>
-                            <div style={S.detailItem}><span>{b.price} ج</span><span>💰</span></div>
+                            <div>📱 {b.phone}</div>
+                            <div>📅 التاريخ: {b.date}</div>
+                            <div>⏰ {b.time} ({b.duration}س)</div>
+                            <div>💰 السعر الإجمالي: {b.price} ج</div>
                           </div>
                           <div style={S.actionRow}>
-                            <button style={S.actionBtn("#334155", "#f1f5f9")} onClick={() => updateStatus(b.id, "cancelled")}>إلغاء الحجز المؤكد ⚠️</button>
+                            <button style={S.actionBtn(b.paid ? "#ef4444" : "#3b82f6", "#fff")} onClick={() => togglePaid(b.id, b.paid)}>
+                              {b.paid ? "تغيير لـ (غير مدفوع) 🔴" : "تحويل لـ (تم الدفع كاش) 🟢"}
+                            </button>
+                            <button style={S.actionBtn("#334155", "#9ca3af")} onClick={() => updateStatus(b, "cancelled")}>إلغاء الحجز كاملاً ⚠️</button>
                           </div>
                         </div>
                       ))
@@ -364,44 +337,17 @@
                 )
               )}
 
-              {/* مودال طلب الحجز للزبائن */}
               {modal && (
                 <div style={S.overlay} onClick={() => setModal(null)}>
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
-                    <h2 style={S.modalTitle}>📋 طلب حجز جديد</h2>
-                    <p style={{color: '#94a3b8', fontSize: 14, marginBottom: 15}}>ساعة البدء: {modal.time}</p>
-                    
-                    <div style={S.formGroup}>
-                      <label style={S.label}>الاسم بالكامل</label>
-                      <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={S.input} placeholder="مثال: كابتن محمد" />
-                    </div>
-                    
-                    <div style={S.formGroup}>
-                      <label style={S.label}>رقم الواتساب</label>
-                      <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={S.input} placeholder="مثال: 01xxxxxxxxx" />
-                    </div>
-
-                    <div style={S.formGroup}>
-                      <label style={S.label}>⏱️ مدة الحجز (عدد الساعات)</label>
-                      <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={S.select}>
-                        <option value="1">ساعة واحدة</option>
-                        <option value="2">ساعتين (2 ساعة)</option>
-                        <option value="3">3 ساعات</option>
-                        <option value="4">4 ساعات</option>
-                      </select>
-                    </div>
-
-                    <div style={{background: '#0f172a', padding: 12, borderRadius: 8, marginBottom: 15, border: '1px dashed #22c55e'}}>
-                      <span style={{fontSize: 14, color: '#94a3b8'}}>الحساب الإجمالي المتوقع: </span>
-                      <span style={{fontSize: 18, fontWeight: 'bold', color: '#22c55e'}}>{calculateBookingPrice(modal.time, parseInt(form.duration))} جنيه</span>
-                    </div>
-
-                    {formError && <p style={{color: '#f87171', fontWeight: 'bold'}}>{formError}</p>}
-                    
-                    <div style={S.row}>
-                      <button style={S.btnGray} onClick={() => setModal(null)}>إلغاء</button>
-                      <button style={S.btnGreen} onClick={handleBook}>إرسال الطلب</button>
-                    </div>
+                    <h3>📋 طلب حجز</h3>
+                    <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{width:'100%', padding:10, marginBottom:10}} placeholder="اسم الزبون" />
+                    <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={{width:'100%', padding:10, marginBottom:10}} placeholder="رقم الموبايل" />
+                    <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={{width:'100%', padding:10, marginBottom:10}}>
+                      <option value="1">ساعة</option>
+                      <option value="2">ساعتين</option>
+                    </select>
+                    <button style={S.btnGreen} onClick={handleBook}>إرسال</button>
                   </div>
                 </div>
               )}
