@@ -15,7 +15,7 @@
         }
     </style>
 
-    <!-- استدعاء روابط المكتبات الرسمية والمستقرة لتجنب مشاكل appendChild -->
+    <!-- استدعاء المكتبات المستقرة -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
@@ -25,9 +25,7 @@
     
     <div id="root"></div>
 
-    <!-- السكريبت الداخلي الخالي تماماً من أي كلمة import أو require -->
     <script type="text/babel">
-        // التأكد من جلب المتغيرات محلياً من الـ Global window لمنع مشاكل التحميل
         const useState = React.useState;
         const useEffect = React.useEffect;
 
@@ -76,12 +74,6 @@
 
         function todayStr() { return new Date().toISOString().split("T")[0]; }
 
-        function formatDate(d) {
-          return new Date(d + "T00:00:00").toLocaleDateString("ar-EG", {
-            weekday: "long", year: "numeric", month: "long", day: "numeric"
-          });
-        }
-
         const S = {
           root: { minHeight: "100vh", background: "#0f172a", color: "#f1f5f9", display: "flex", flexDirection: "column" },
           contentWrapper: { flex: 1 },
@@ -108,6 +100,7 @@
           modalTitle: { color: "#22c55e", fontSize: 22, margin: 0, fontWeight: 800 },
           formGroup: { marginBottom: 16 },
           input: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 15 },
+          select: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 15, cursor: "pointer" },
           errMsg: { color: "#f87171", fontSize: 14, fontWeight: "bold", margin: "10px 0" },
           row: { display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 20 },
           btnGreen: { background: "#22c55e", color: "#0f172a", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 800, cursor: "pointer", fontSize: 15 },
@@ -115,8 +108,6 @@
           loginCard: { background: "#1e293b", borderRadius: 16, padding: 32, maxWidth: 400, margin: "40px auto", border: "1px solid #334155" },
           bookingCard: { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, border: "1px solid #334155" },
           bookingTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-          bookingId: { color: "#22c55e", fontWeight: 700, marginLeft: 8 },
-          bookingName: { fontWeight: 700, fontSize: 16 },
           bookingMid: { display: "flex", gap: 16, color: "#94a3b8", fontSize: 14, marginTop: 12 },
           adminTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
           adminTitle: { fontSize: 22, margin: 0 },
@@ -171,7 +162,8 @@
           const dayBookings = bookings.filter(b => b.date === selectedDate && b.status !== "cancelled");
           const bookedSlots = new Set();
           dayBookings.forEach(b => {
-            for (let i = 0; i < b.duration; i++) {
+            const dur = parseInt(b.duration || 1);
+            for (let i = 0; i < dur; i++) {
               const idx = TIME_SLOTS.indexOf(b.time);
               if (idx !== -1 && idx + i < TIME_SLOTS.length) bookedSlots.add(TIME_SLOTS[idx + i]);
             }
@@ -194,13 +186,15 @@
             setFormError("");
             if (!form.name.trim()) { setFormError("من فضلك أدخل الاسم"); return; }
             if (!form.phone.match(/^01[0-9]{9}$/)) { setFormError("رقم الواتس اب غير صحيح"); return; }
-            const dur = 1;
-            if (!isSlotAvailable(modal.time, dur)) { setFormError("الموعد غير متاح"); return; }
+            const dur = parseInt(form.duration);
+            if (!isSlotAvailable(modal.time, dur)) { setFormError("عذراً، الساعات المحددة تتداخل مع حجز آخر!"); return; }
+
+            const calculatedPrice = calculateBookingPrice(modal.time, dur);
 
             const newBooking = {
               id: Math.random().toString(36).slice(2, 9).toUpperCase(), name: form.name.trim(), phone: form.phone.trim(),
               date: selectedDate, time: modal.time, duration: dur,
-              price: calculateBookingPrice(modal.time, dur), status: "pending", paid: false
+              price: calculatedPrice, status: "pending", paid: false
             };
 
             const { error } = await supabaseClient.from('bookings').insert([newBooking]);
@@ -292,13 +286,13 @@
                           {adminTab === "pending" && pendingList.map(b => (
                             <div key={b.id} style={S.bookingCard}>
                               <div style={S.bookingTop}><span><b>{b.name}</b></span><span style={{color: '#fbbf24'}}>⏳ انتظار</span></div>
-                              <div style={S.bookingMid}><span>📱 {b.phone}</span><span>⏰ {b.time}</span><span>💰 {b.price} ج</span></div>
+                              <div style={S.bookingMid}><span>📱 {b.phone}</span><span>⏰ {b.time} ({b.duration}س)</span><span>💰 {b.price} ج</span></div>
                             </div>
                           ))}
                           {adminTab === "confirmed" && confirmedList.map(b => (
                             <div key={b.id} style={S.bookingCard}>
                               <div style={S.bookingTop}><span><b>{b.name}</b></span><span style={{color: '#4ade80'}}>✅ مؤكد</span></div>
-                              <div style={S.bookingMid}><span>📱 {b.phone}</span><span>⏰ {b.time}</span><span>💰 {b.price} ج</span></div>
+                              <div style={S.bookingMid}><span>📱 {b.phone}</span><span>⏰ {b.time} ({b.duration}س)</span><span>💰 {b.price} ج</span></div>
                             </div>
                           ))}
                         </>
@@ -312,16 +306,36 @@
                 <div style={S.overlay} onClick={() => setModal(null)}>
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
                     <h2 style={S.modalTitle}>📋 طلب حجز جديد</h2>
-                    <p style={{color: '#94a3b8', fontSize: 14, marginBottom: 15}}>ساعة الحجز المختارة: {modal.time}</p>
+                    <p style={{color: '#94a3b8', fontSize: 14, marginBottom: 15}}>ساعة البدء: {modal.time}</p>
+                    
                     <div style={S.formGroup}>
                       <label style={S.label}>الاسم بالكامل</label>
                       <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={S.input} placeholder="مثال: محمد أحمد" />
                     </div>
+                    
                     <div style={S.formGroup}>
                       <label style={S.label}>رقم الواتساب</label>
                       <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={S.input} placeholder="مثال: 01xxxxxxxxx" />
                     </div>
+
+                    <!-- ⏱️ خانة اختيار مدة الحجز (عدد الساعات) المضافة حديثاً -->
+                    <div style={S.formGroup}>
+                      <label style={S.label}>⏱️ مدة الحجز (عدد الساعات)</label>
+                      <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={S.select}>
+                        <option value="1">ساعة واحدة</option>
+                        <option value="2">ساعتين (2 ساعة)</option>
+                        <option value="3">3 ساعات</option>
+                        <option value="4">4 ساعات</option>
+                      </select>
+                    </div>
+
+                    <div style={{background: '#0f172a', padding: 12, borderRadius: 8, marginBottom: 15, border: '1px dashed #22c55e'}}>
+                      <span style={{fontSize: 14, color: '#94a3b8'}}>الحساب الإجمالي المتوقع: </span>
+                      <span style={{fontSize: 18, fontWeight: 'bold', color: '#22c55e'}}>{calculateBookingPrice(modal.time, parseInt(form.duration))} جنيه</span>
+                    </div>
+
                     {formError && <p style={S.errMsg}>{formError}</p>}
+                    
                     <div style={S.row}>
                       <button style={S.btnGray} onClick={() => setModal(null)}>إلغاء</button>
                       <button style={S.btnGreen} onClick={handleBook}>إرسال الطلب</button>
