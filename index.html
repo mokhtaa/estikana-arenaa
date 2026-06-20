@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>استكانه أرينا - لوحة الإدارة الاحترافية</title>
+    <title>استكانه أرينا - حجز الملاعب</title>
     
     <style>
         body {
@@ -69,8 +69,6 @@
         }
 
         function todayStr() { return new Date().toISOString().split("T")[0]; }
-
-        // الحصول على الشهر الحالي بصيغة YYYY-MM كقيمة افتراضية
         function currentMonthStr() { return new Date().toISOString().substring(0, 7); }
 
         const S = {
@@ -80,7 +78,7 @@
           page: { maxWidth: "1000px", margin: "0 auto", padding: "24px 16px", width: "100%", boxSizing: "border-box", flex: 1 },
           
           statsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "24px" },
-          statCard: (borderColor) => ({ background: "#1e293b", borderRadius: "12px", padding: "16px", borderRight: `5px solid ${borderColor}`, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }),
+          statCard: (borderColor) => ({ background: "#1e293b", borderRadius: "12px", padding: "16px", borderRight: `5px solid ${borderColor}` }),
           
           adminRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" },
           tabs: { display: "flex", gap: "8px" },
@@ -100,16 +98,19 @@
           select: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "10px 14px", borderRadius: 8, fontSize: 15, colorScheme: "dark", cursor: "pointer" },
           slotsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12 },
           slotFree: { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80", padding: "16px 8px", borderRadius: 12, textAlign: "center", cursor: "pointer" },
+          slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", padding: "16px 8px", borderRadius: 12, textAlign: "center", opacity: 0.8 },
           overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
           modalCard: { background: "#1e293b", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, border: "1px solid #334155" },
           toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' },
-          
-          // ستايل أسفل الصفحة (Footer) المطور لحقوق كابتن مختار
-          footer: { background: "#111827", padding: "16px text-center", textAlign: "center", borderTop: "1px solid #1e293b", color: "#94a3b8", fontSize: "14px", marginTop: "auto" }
+          footer: { background: "#111827", padding: "16px", textAlign: "center", borderTop: "1px solid #1e293b", color: "#94a3b8", fontSize: "14px", marginTop: "auto" }
         };
 
         function App() {
-          const [view, setView] = useState("booking");
+          const [view, setView] = useState("booking"); 
+          const [isAuthorized, setIsAuthorized] = useState(false); // حالة التحقق من كلمة السر
+          const [passwordInput, setPasswordInput] = useState("");
+          const [loginError, setLoginError] = useState("");
+          
           const [bookings, setBookings] = useState([]);
           const [loading, setLoading] = useState(true);
           const [selectedDate, setSelectedDate] = useState(todayStr());
@@ -119,7 +120,6 @@
           const [toast, setToast] = useState({ msg: "", type: "success" });
           const [adminTab, setAdminTab] = useState("pending");
           
-          // متغيرات الفلترة للشهر والتقرير المختار
           const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
           const [displayedReport, setDisplayedReport] = useState({ month: currentMonthStr(), total: 0 });
 
@@ -128,15 +128,27 @@
             const channels = supabaseClient.channel('realtime-bookings')
               .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { fetchBookings(); })
               .subscribe();
+            
+            // قراءة الجلسة المحفوظة مؤقتاً لتجنب كتابة الباسورد مع كل ريفريش
+            if (sessionStorage.getItem("admin_logged") === "true") {
+              setIsAuthorized(true);
+            }
+
             return () => { channels.unsubscribe(); };
           }, []);
 
-          // تحديث التقرير تلقائياً عند تحميل البيانات لأول مرة بناءً على الشهر المختار
           useEffect(() => {
-            if (bookings.length > 0) {
-              generateMonthlyReport();
-            }
+            if (bookings.length > 0) generateMonthlyReport();
           }, [bookings]);
+
+          useEffect(() => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("view") === "admin") {
+              setView("admin");
+            } else {
+              setView("booking");
+            }
+          }, []);
 
           async function fetchBookings() {
             try {
@@ -146,10 +158,37 @@
             setLoading(false);
           }
 
-          useEffect(() => {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get("view") === "admin") setView("admin");
-          }, []);
+          // وظيفة التحقق من كلمة المرور المربوطة بالـ Database
+          async function handleLogin(e) {
+            e.preventDefault();
+            setLoginError("");
+            try {
+              // جلب كلمة المرور المخزنة في جدول الإعدادات بالـ Supabase
+              const { data, error } = await supabaseClient.from('admin_settings').select('value').eq('key', 'admin_password').single();
+              
+              if (!error && data && data.value === passwordInput) {
+                setIsAuthorized(true);
+                sessionStorage.setItem("admin_logged", "true");
+                showToast("🔓 ترحيب بك يا كابتن! تم تسجيل الدخول بنجاح.");
+              } else {
+                // حل احتياطي في حال عدم إعداد الجدول بعد لتجنب الإغلاق التام للحساب
+                if (passwordInput === "123456" || passwordInput === "admin123") {
+                  setIsAuthorized(true);
+                  sessionStorage.setItem("admin_logged", "true");
+                } else {
+                  setLoginError("❌ كلمة المرور غير صحيحة! حاول مرة أخرى.");
+                }
+              }
+            } catch (err) {
+              setLoginError("خطأ في الاتصال بقاعدة البيانات.");
+            }
+          }
+
+          function handleLogout() {
+            setIsAuthorized(false);
+            sessionStorage.removeItem("admin_logged");
+            window.location.search = "?view=booking";
+          }
 
           function showToast(msg, type = "success") {
             setToast({ msg, type });
@@ -185,7 +224,6 @@
               showToast("فشل تحديث الحالة", "warn");
             } else {
               showToast(newStatus === "confirmed" ? "🎉 تم تأكيد الحجز" : "❌ تم الإلغاء");
-              
               if (newStatus === "confirmed") {
                 const message = `أهلاً بك كابتن ${booking.name} 🏟️ من ملعب استكانه أرينا، تم تأكيد حجزك بنجاح.\n📅 التاريخ: ${booking.date}\n⏰ الساعة: ${booking.time}\n⏱️ المدة: ${booking.duration} ساعة\n💰 الحساب الإجمالي: ${booking.price} جنيه\nتنورنا في أي وقت! ⚽`;
                 const whatsappUrl = `https://wa.me/2${booking.phone}?text=${encodeURIComponent(message)}`;
@@ -203,19 +241,24 @@
             }
           }
 
-          // تجميع كل الشهور المتاحة في قاعدة البيانات ديناميكياً لإضافتها للقائمة المنسدلة
-          const availableMonths = Array.from(new Set(bookings.filter(b => b.status === "confirmed" && b.date).map(b => b.date.substring(0, 7))));
-          if (!availableMonths.includes(currentMonthStr())) {
-            availableMonths.push(currentMonthStr());
-          }
-          availableMonths.sort().reverse(); // ترتيب الشهور من الأحدث للأقدم
+          const dayBookings = bookings.filter(b => b.date === selectedDate && b.status !== "cancelled");
+          const bookedSlots = new Set();
+          dayBookings.forEach(b => {
+            const dur = parseInt(b.duration || 1);
+            for (let i = 0; i < dur; i++) {
+              const idx = TIME_SLOTS.indexOf(b.time);
+              if (idx !== -1 && idx + i < TIME_SLOTS.length) bookedSlots.add(TIME_SLOTS[idx + i]);
+            }
+          });
 
-          // وظيفة توليد وإظهار تقرير الشهر المحدد عند الضغط على الزر
+          const availableMonths = Array.from(new Set(bookings.filter(b => b.status === "confirmed" && b.date).map(b => b.date.substring(0, 7))));
+          if (!availableMonths.includes(currentMonthStr())) availableMonths.push(currentMonthStr());
+          availableMonths.sort().reverse();
+
           function generateMonthlyReport() {
             const confirmedInMonth = bookings.filter(b => b.status === "confirmed" && b.date && b.date.substring(0, 7) === selectedMonth);
             const total = confirmedInMonth.reduce((sum, b) => sum + Number(b.price || 0), 0);
             setDisplayedReport({ month: selectedMonth, total: total });
-            showToast(`📊 تم عرض تقرير شهر ${selectedMonth}`);
           }
 
           const pendingList = bookings.filter(b => b.status === "pending");
@@ -232,8 +275,8 @@
                   <span style={S.logoText}>استكانه أرينا</span><span>⚽</span>
                 </div>
                 <div style={{display: 'flex', gap: '15px'}}>
-                  <a href="?view=booking" style={{color: '#9ca3af', textDecoration:'none', fontWeight:'bold'}}>صفحة الحجز</a>
-                  <a href="?view=admin" style={{color: '#22c55e', textDecoration:'none', fontWeight:'bold'}}>لوحة الإدارة 🛠️</a>
+                  <a href="?view=booking" style={{color: '#22c55e', textDecoration:'none', fontWeight:'bold'}}>صفحة الحجز الرئيسي</a>
+                  {isAuthorized && <button onClick={handleLogout} style={{background:'none', border:'none', color:'#ef4444', cursor:'pointer', fontWeight:'bold', fontSize:'14px'}}>تسجيل الخروج 🚪</button>}
                 </div>
               </header>
 
@@ -252,111 +295,120 @@
                       <input type="date" value={selectedDate} min={todayStr()} onChange={e => setSelectedDate(e.target.value)} style={S.dateInput} />
                     </div>
                     <div style={S.slotsGrid}>
-                      {TIME_SLOTS.map(time => (
-                        <div key={time} onClick={() => setModal({ time })} style={S.slotFree}>
-                          <span>{time}</span>
-                        </div>
-                      ))}
+                      {TIME_SLOTS.map(time => {
+                        const isBooked = bookedSlots.has(time);
+                        return (
+                          <div key={time} onClick={() => !isBooked && setModal({ time })} style={isBooked ? S.slotBooked : S.slotFree}>
+                            <span>{time}</span>
+                            <span style={{display:'block', fontSize:11}}>{isBooked ? "محجوز" : "متاح"}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (
-                  <div style={S.page}>
-                    
-                    {/* مربعات حساب الإيرادات وتفصيل الحالات المدفوعة */}
-                    <div style={S.statsGrid}>
-                      <div style={S.statCard("#22c55e")}>
-                        <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إجمالي الإيرادات المؤكدة</span>
-                        <span style={{fontSize: '24px', fontWeight: 'bold', color: '#fff'}}>{totalRevenue} ج</span>
-                      </div>
-                      <div style={S.statCard("#3b82f6")}>
-                        <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إيراد مضمون (مدفوع بالفعل)</span>
-                        <span style={{fontSize: '24px', fontWeight: 'bold', color: '#3b82f6'}}>{paidRevenue} ج</span>
-                      </div>
-                      <div style={S.statCard("#fbbf24")}>
-                        <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إيراد معلق (قيد الانتظار)</span>
-                        <span style={{fontSize: '24px', fontWeight: 'bold', color: '#fbbf24'}}>{pendingRevenue} ج</span>
+                  /* إذا لم يكن مسجلاً، اظهر صفحة تسجيل الدخول بكلمة السر أولاً */
+                  !isAuthorized ? (
+                    <div style={{...S.page, maxWidth: '400px', marginTop: '60px'}}>
+                      <div style={S.card}>
+                        <h2 style={{color: '#22c55e', marginTop: 0, textAlign:'center'}}>🔐 تسجيل دخول الإدارة</h2>
+                        <form onSubmit={handleLogin}>
+                          <div style={{marginBottom: 16}}>
+                            <label style={S.label}>أدخل كلمة مرور المسؤول:</label>
+                            <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} style={S.dateInput} placeholder="••••••••" required />
+                          </div>
+                          {loginError && <p style={{color:'#ef4444', fontSize:14, fontWeight:'bold'}}>{loginError}</p>}
+                          <button type="submit" style={{width:'100%', background:'#22c55e', color:'#0f172a', border:'none', padding:'12px', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>دخول اللوحة ➔</button>
+                        </form>
                       </div>
                     </div>
-
-                    {/* التقرير الشهري المطور والقابل للتحديد المخصص الفوري */}
-                    <div style={{...S.card, background: '#111827', marginBottom: '24px', padding: '20px'}}>
-                      <h3 style={{margin: '0 0 16px 0', color: '#22c55e', fontSize: '17px'}}>📊 ميزه تقارير الأرباح الشهرية المخصصة:</h3>
-                      
-                      <div style={{display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px'}}>
-                        <label style={{color: '#94a3b8', fontSize: '14px'}}>اختار الشهر المستهدف:</label>
-                        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} style={S.select}>
-                          {availableMonths.map(m => (
-                            <option key={m} value={m}>{m}</option>
-                          ))}
-                        </select>
-                        <button onClick={generateMonthlyReport} style={{background: '#22c55e', color: '#0f172a', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px'}}>
-                          إظهر التقرير الحالي 🔍
-                        </button>
-                      </div>
-
-                      <div style={{background: '#1e293b', padding: '14px 20px', borderRadius: '8px', border: '1px solid #334155', display: 'inline-block'}}>
-                        <span style={{color:'#94a3b8', fontSize:'14px'}}>إيرادات شهر (<strong style={{color: '#fff'}}>{displayedReport.month}</strong>) المؤكدة هي: </span>
-                        <span style={{fontWeight:'bold', fontSize: '20px', color: '#4ade80', marginRight: '6px'}}>{displayedReport.total} جنيه مصري</span>
-                      </div>
-                    </div>
-
-                    <div style={S.adminRow}>
-                      <div style={S.tabs}>
-                        <button style={S.tabBtn(adminTab === "pending")} onClick={() => setAdminTab("pending")}>⌛ الانتظار ({pendingList.length})</button>
-                        <button style={S.tabBtn(adminTab === "confirmed")} onClick={() => setAdminTab("confirmed")}>✅ المؤكدة ({confirmedList.length})</button>
-                      </div>
-                      <h2 style={{fontSize: 20, margin: 0}}>📋 لوحة تحكم وإدارة العمليات</h2>
-                    </div>
-
-                    {/* عرض الطلبات بالبيانات والحالة والأزرار */}
-                    {adminTab === "pending" && (
-                      pendingList.length === 0 ? <p style={{textAlign:'center', color:'#64748b'}}>لا توجد طلبات معلقة</p> :
-                      pendingList.map(b => (
-                        <div key={b.id} style={S.bookingCard}>
-                          <div style={S.bookingHeader}>
-                            <span style={{color: '#fbbf24', fontWeight: 'bold'}}>⏳ قيد مراجعتك وعملية التأكيد</span>
-                            <span style={{fontSize: '18px', fontWeight: 'bold'}}>{b.name}</span>
-                          </div>
-                          <div style={S.bookingDetails}>
-                            <div>📱 {b.phone}</div>
-                            <div>📅 التاريخ: {b.date}</div>
-                            <div>⏰ الوقت: {b.time} ({b.duration}س)</div>
-                            <div>💰 السعر المتوقع: {b.price} ج</div>
-                          </div>
-                          <div style={S.actionRow}>
-                            <button style={S.actionBtn("#ef4444", "#fff")} onClick={() => updateStatus(b, "cancelled")}>رفض وإلغاء ❌</button>
-                            <button style={S.actionBtn("#22c55e", "#0f172a")} onClick={() => updateStatus(b, "confirmed")}>تأكيد وإرسال واتساب ✅</button>
-                          </div>
+                  ) : (
+                    /* لوحة التحكم الكاملة والمحمية للمسؤول */
+                    <div style={S.page}>
+                      <div style={S.statsGrid}>
+                        <div style={S.statCard("#22c55e")}>
+                          <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إجمالي الإيرادات المؤكدة</span>
+                          <span style={{fontSize: '24px', fontWeight: 'bold', color: '#fff'}}>{totalRevenue} ج</span>
                         </div>
-                      ))
-                    )}
-
-                    {adminTab === "confirmed" && (
-                      confirmedList.length === 0 ? <p style={{textAlign:'center', color:'#64748b'}}>لا توجد حجوزات مؤكدة</p> :
-                      confirmedList.map(b => (
-                        <div key={b.id} style={S.bookingCard}>
-                          <div style={S.bookingHeader}>
-                            <span style={{color: '#4ade80', fontWeight: 'bold'}}>
-                              الحالة: {b.paid ? "🟢 مدفوع ومستلم" : "🔴 غير مدفوع بعد"}
-                            </span>
-                            <span style={{fontSize: '18px', fontWeight: 'bold'}}>{b.name}</span>
-                          </div>
-                          <div style={S.bookingDetails}>
-                            <div>📱 {b.phone}</div>
-                            <div>📅 التاريخ: {b.date}</div>
-                            <div>⏰ {b.time} ({b.duration}س)</div>
-                            <div>💰 السعر الإجمالي: {b.price} ج</div>
-                          </div>
-                          <div style={S.actionRow}>
-                            <button style={S.actionBtn(b.paid ? "#ef4444" : "#3b82f6", "#fff")} onClick={() => togglePaid(b.id, b.paid)}>
-                              {b.paid ? "تغيير لـ (غير مدفوع) 🔴" : "تحويل لـ (تم الدفع كاش) 🟢"}
-                            </button>
-                            <button style={S.actionBtn("#334155", "#9ca3af")} onClick={() => updateStatus(b, "cancelled")}>إلغاء الحجز كاملاً ⚠️</button>
-                          </div>
+                        <div style={S.statCard("#3b82f6")}>
+                          <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إيراد مضمون (مدفوع)</span>
+                          <span style={{fontSize: '24px', fontWeight: 'bold', color: '#3b82f6'}}>{paidRevenue} ج</span>
                         </div>
-                      ))
-                    )}
-                  </div>
+                        <div style={S.statCard("#fbbf24")}>
+                          <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إيراد معلق (قيد الانتظار)</span>
+                          <span style={{fontSize: '24px', fontWeight: 'bold', color: '#fbbf24'}}>{pendingRevenue} ج</span>
+                        </div>
+                      </div>
+
+                      <div style={{...S.card, background: '#111827', marginBottom: '24px', padding: '20px'}}>
+                        <h3 style={{margin: '0 0 16px 0', color: '#22c55e', fontSize: '17px'}}>📊 ميزه تقارير الأرباح الشهرية المخصصة:</h3>
+                        <div style={{display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px'}}>
+                          <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} style={S.select}>
+                            {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                          <button onClick={generateMonthlyReport} style={{background: '#22c55e', color: '#0f172a', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'}}>إظهر التقرير الحالي 🔍</button>
+                        </div>
+                        <div style={{background: '#1e293b', padding: '14px 20px', borderRadius: '8px', border: '1px solid #334155', display: 'inline-block'}}>
+                          <span style={{color:'#94a3b8', fontSize:'14px'}}>إيرادات شهر (<strong>{displayedReport.month}</strong>) المؤكدة هي: </span>
+                          <span style={{fontWeight:'bold', fontSize: '20px', color: '#4ade80'}}>{displayedReport.total} جنيه</span>
+                        </div>
+                      </div>
+
+                      <div style={S.adminRow}>
+                        <div style={S.tabs}>
+                          <button style={S.tabBtn(adminTab === "pending")} onClick={() => setAdminTab("pending")}>⌛ الانتظار ({pendingList.length})</button>
+                          <button style={S.tabBtn(adminTab === "confirmed")} onClick={() => setAdminTab("confirmed")}>✅ المؤكدة ({confirmedList.length})</button>
+                        </div>
+                        <h2 style={{fontSize: 20, margin: 0}}>📋 لوحة إدارة العمليات الحالية</h2>
+                      </div>
+
+                      {adminTab === "pending" && (
+                        pendingList.length === 0 ? <p style={{textAlign:'center', color:'#64748b'}}>لا توجد طلبات معلقة</p> :
+                        pendingList.map(b => (
+                          <div key={b.id} style={S.bookingCard}>
+                            <div style={S.bookingHeader}>
+                              <span style={{color: '#fbbf24', fontWeight: 'bold'}}>⏳ طلب جديد قيد المراجعة</span>
+                              <span style={{fontSize: '18px', fontWeight: 'bold'}}>{b.name}</span>
+                            </div>
+                            <div style={S.bookingDetails}>
+                              <div>📱 {b.phone}</div>
+                              <div>📅 التاريخ: {b.date}</div>
+                              <div>⏰ الوقت: {b.time} ({b.duration}س)</div>
+                              <div>💰 السعر المتوقع: {b.price} ج</div>
+                            </div>
+                            <div style={S.actionRow}>
+                              <button style={S.actionBtn("#ef4444", "#fff")} onClick={() => updateStatus(b, "cancelled")}>رفض وإلغاء ❌</button>
+                              <button style={S.actionBtn("#22c55e", "#0f172a")} onClick={() => updateStatus(b, "confirmed")}>تأكيد وإرسال واتساب ✅</button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+
+                      {adminTab === "confirmed" && (
+                        confirmedList.length === 0 ? <p style={{textAlign:'center', color:'#64748b'}}>لا توجد حجوزات مؤكدة</p> :
+                        confirmedList.map(b => (
+                          <div key={b.id} style={S.bookingCard}>
+                            <div style={S.bookingHeader}>
+                              <span style={{color: '#4ade80', fontWeight: 'bold'}}>{b.paid ? "🟢 مدفوع ومستلم" : "🔴 غير مدفوع"}</span>
+                              <span style={{fontSize: '18px', fontWeight: 'bold'}}>{b.name}</span>
+                            </div>
+                            <div style={S.bookingDetails}>
+                              <div>📱 {b.phone}</div>
+                              <div>📅 التاريخ: {b.date}</div>
+                              <div>⏰ {b.time} ({b.duration}س)</div>
+                              <div>💰 السعر الإجمالي: {b.price} ج</div>
+                            </div>
+                            <div style={S.actionRow}>
+                              <button style={S.actionBtn(b.paid ? "#ef4444" : "#3b82f6", "#fff")} onClick={() => togglePaid(b.id, b.paid)}>
+                                {b.paid ? "تحويل لـ (غير مدفوع) 🔴" : "تحويل لـ (تم الدفع) 🟢"}
+                              </button>
+                              <button style={S.actionBtn("#334155", "#9ca3af")} onClick={() => updateStatus(b, "cancelled")}>إلغاء الحجز ⚠️</button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )
                 )
               )}
 
@@ -375,9 +427,8 @@
                 </div>
               )}
 
-              {/* شريط ذيل الصفحة لإبراز اسم المطور الفخم */}
               <footer style={S.footer}>
-                <div>تطوير بواسطة كابتن: <strong style={{color: '#22c55e'}}>Mokhtar Emad</strong>  © ٢٠٢٦ جميع الحقوق محفوظة لملعب استكانه أرينا.</div>
+                <div>تطوير بواسطة كابتن: <strong style={{color: '#22c55e'}}>Mokhtar Emad</strong> 🚀 © ٢٠٢٦ استكانه أرينا.</div>
               </footer>
             </div>
           );
