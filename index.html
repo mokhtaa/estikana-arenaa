@@ -4,24 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>استكانه أرينا - الإدارة الشاملة المؤمنة</title>
+    <!-- استدعاء المكتبات من الـ CDN كـ Globals متوافقة مع المتصفح مباشرة -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- استدعاء النسخة المتوافقة كلياً مع المتصفح والـ CDN من سوبابيز -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- إضافة data-type="module" ليتوافق المتصفح مع معالجة الـ imports بنجاح -->
-    <script type="text/babel" data-type="module">
+    <!-- تم إزالة data-type="module" لحل مشكلة react/jsx-runtime نهائياً -->
+    <script type="text/babel">
         const { useState, useEffect } = React;
 
         // 🔐 بيانات الربط الخاصة بمشروعك (آمنة ومحمية بـ RLS)
         const SUPABASE_URL = "https://wiugwyhpuhokhocttwbq.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_zzDhn9DNIAdjJLn8aNzKzA_4IapbzcL";
         
-        // جلب العميل بشكل صحيح من المتغير العام للمكتبة في المتصفح
+        // جلب العميل من المتغير العام (Global) في المتصفح بدون أي import
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ⏰ مواعيد الحجوزات بنظام 12 ساعة من 1 ظهراً إلى 12 مساءً
@@ -33,35 +33,29 @@
 
         const FIELD_NAME = "استكانه أرينا";
 
-        // 🛠️ دالة آمنة ومعدلة لتحويل المواعيد إلى نظام 24 ساعة بدون كراش وحل مشكلة الشاشة البيضاء
+        // 🛠️ دالة تحويل المواعيد إلى نظام 24 ساعة
         function parseTo24Hour(timeStr) {
           if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0;
           
           try {
             const hour = parseInt(timeStr.split(":")[0]);
-            
-            // إذا كان الوقت قادم من البيانات القديمة مباشرة بنظام 24 ساعة
             if (!timeStr.includes("ظهراً") && !timeStr.includes("عصراً") && !timeStr.includes("مساءً")) {
               return hour;
             }
-
-            // المواعيد النهارية (1 ظهراً = 13، 2 ظهراً = 14، 3 عصراً = 15، 4 عصراً = 16)
             if (timeStr.includes("ظهراً") || timeStr.includes("عصراً")) {
               return hour + 12; 
             }
-            
-            // المواعيد المسائية (5 مساءً = 17، 6 مساءً = 18 ... حتى 11 مساءً = 23)
             if (timeStr.includes("مساءً")) {
-              if (hour === 12) return 24; // 12 مساءً (منتصف الليل)
+              if (hour === 12) return 24;
               return hour + 12;
             }
             return hour;
           } catch (e) {
-            return 0; // حماية ضد أي صيغة غريبة
+            return 0;
           }
         }
 
-        // 💰 حساب السعر: من 1 ظهراً (13) إلى 6 مساءً (18) بـ 100ج | من 7 مساءً (19) لـ 12 مساءً (24) بـ 150ج
+        // 💰 حساب السعر بناءً على الساعة
         function getPriceForSlot(timeStr) {
           const hour24 = parseTo24Hour(timeStr);
           return hour24 >= 13 && hour24 <= 18 ? 100 : 150;
@@ -435,7 +429,7 @@
                                 )}
                               </div>
                             </>
-                          )}
+          )}
                         </>
                       )}
                     </div>
