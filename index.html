@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>استكانه أرينا - حجز الملاعب</title>
+    <title>استكانه أرينا - نظام الحجز الآمن</title>
     
     <style>
         body {
@@ -94,20 +94,73 @@
           actionBtn: (bg, color) => ({ background: bg, color: color, border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "14px" }),
           
           card: { background: "#1e293b", borderRadius: "12px", padding: "16px", marginBottom: "16px", border: "1px solid #334155" },
-          dateInput: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", fontSize: 16 },
+          dateInput: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", fontSize: 16, boxSizing: "border-box" },
           select: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "10px 14px", borderRadius: 8, fontSize: 15, colorScheme: "dark", cursor: "pointer" },
           slotsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12 },
           slotFree: { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80", padding: "16px 8px", borderRadius: 12, textAlign: "center", cursor: "pointer" },
           slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", padding: "16px 8px", borderRadius: 12, textAlign: "center", opacity: 0.8 },
-          overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
-          modalCard: { background: "#1e293b", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, border: "1px solid #334155" },
           toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' },
-          footer: { background: "#111827", padding: "16px", textAlign: "center", borderTop: "1px solid #1e293b", color: "#94a3b8", fontSize: "14px", marginTop: "auto" }
+          footer: { background: "#111827", padding: "16px", textAlign: "center", borderTop: "1px solid #1e293b", color: "#94a3b8", fontSize: "14px", marginTop: "auto" },
+          label: { display: "block", marginBottom: "8px", color: "#94a3b8", fontSize: "14px" },
+
+          /* 🌟 التنسيق الجديد والمحسن للنافذة المنبثقة (Modal) */
+          modalOverlay: { 
+            position: "fixed", 
+            inset: 0, 
+            background: "rgba(15, 23, 42, 0.85)", 
+            backdropFilter: "blur(4px)", 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center", 
+            zIndex: 1000,
+            padding: "16px"
+          },
+          modalCard: { 
+            background: "#1e293b", 
+            borderRadius: "16px", 
+            padding: "24px", 
+            width: "100%", 
+            maxWidth: "400px", 
+            border: "1px solid #334155",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+            boxSizing: "border-box"
+          },
+          modalTitle: {
+            margin: "0 0 20px 0",
+            fontSize: "20px",
+            fontWeight: "bold",
+            color: "#22c55e",
+            textAlign: "center"
+          },
+          modalInput: { 
+            width: "100%", 
+            background: "#0f172a", 
+            border: "1px solid #334155", 
+            color: "#f1f5f9", 
+            padding: "12px 16px", 
+            borderRadius: "8px", 
+            fontSize: "15px", 
+            marginBottom: "16px",
+            boxSizing: "border-box",
+            outline: "none"
+          },
+          modalBtn: {
+            width: "100%",
+            background: "#22c55e",
+            color: "#0f172a",
+            border: "none",
+            padding: "12px",
+            borderRadius: "8px",
+            fontWeight: "bold",
+            fontSize: "16px",
+            cursor: "pointer",
+            marginTop: "8px"
+          }
         };
 
         function App() {
           const [view, setView] = useState("booking"); 
-          const [isAuthorized, setIsAuthorized] = useState(false); // حالة التحقق من كلمة السر
+          const [isAuthorized, setIsAuthorized] = useState(false);
           const [passwordInput, setPasswordInput] = useState("");
           const [loginError, setLoginError] = useState("");
           
@@ -129,7 +182,6 @@
               .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { fetchBookings(); })
               .subscribe();
             
-            // قراءة الجلسة المحفوظة مؤقتاً لتجنب كتابة الباسورد مع كل ريفريش
             if (sessionStorage.getItem("admin_logged") === "true") {
               setIsAuthorized(true);
             }
@@ -158,26 +210,23 @@
             setLoading(false);
           }
 
-          // وظيفة التحقق من كلمة المرور المربوطة بالـ Database
+          /* 🔒 جلب آمن من جدول admin_config المحدث حسب صورتك */
           async function handleLogin(e) {
             e.preventDefault();
             setLoginError("");
             try {
-              // جلب كلمة المرور المخزنة في جدول الإعدادات بالـ Supabase
-              const { data, error } = await supabaseClient.from('admin_settings').select('value').eq('key', 'admin_password').single();
+              const { data, error } = await supabaseClient
+                .from('admin_config')
+                .select('value')
+                .eq('key', 'admin_password')
+                .single();
               
               if (!error && data && data.value === passwordInput) {
                 setIsAuthorized(true);
                 sessionStorage.setItem("admin_logged", "true");
-                showToast("🔓 ترحيب بك يا كابتن! تم تسجيل الدخول بنجاح.");
+                showToast("🔓 أهلاً بك يا كابتن! تم تسجيل الدخول بنجاح.");
               } else {
-                // حل احتياطي في حال عدم إعداد الجدول بعد لتجنب الإغلاق التام للحساب
-                if (passwordInput === "123456" || passwordInput === "admin123") {
-                  setIsAuthorized(true);
-                  sessionStorage.setItem("admin_logged", "true");
-                } else {
-                  setLoginError("❌ كلمة المرور غير صحيحة! حاول مرة أخرى.");
-                }
+                setLoginError("❌ كلمة المرور غير صحيحة!");
               }
             } catch (err) {
               setLoginError("خطأ في الاتصال بقاعدة البيانات.");
@@ -307,7 +356,6 @@
                     </div>
                   </div>
                 ) : (
-                  /* إذا لم يكن مسجلاً، اظهر صفحة تسجيل الدخول بكلمة السر أولاً */
                   !isAuthorized ? (
                     <div style={{...S.page, maxWidth: '400px', marginTop: '60px'}}>
                       <div style={S.card}>
@@ -323,7 +371,6 @@
                       </div>
                     </div>
                   ) : (
-                    /* لوحة التحكم الكاملة والمحمية للمسؤول */
                     <div style={S.page}>
                       <div style={S.statsGrid}>
                         <div style={S.statCard("#22c55e")}>
@@ -412,17 +459,44 @@
                 )
               )}
 
+              {/* 🌟 النافذة المنبثقة المحدثة بالكامل وبدون تعليقات مكسورة */}
               {modal && (
-                <div style={S.overlay} onClick={() => setModal(null)}>
+                <div style={S.modalOverlay} onClick={() => setModal(null)}>
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
-                    <h3>📋 طلب حجز</h3>
-                    <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{width:'100%', padding:10, marginBottom:10}} placeholder="اسم الزبون" />
-                    <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={{width:'100%', padding:10, marginBottom:10}} placeholder="رقم الموبايل" />
-                    <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={{width:'100%', padding:10, marginBottom:10}}>
-                      <option value="1">ساعة</option>
-                      <option value="2">ساعتين</option>
+                    <h3 style={S.modalTitle}>📝 طلب حجز جديد</h3>
+                    
+                    <div style={{marginBottom: "4px", fontSize: "14px", color: "#94a3b8"}}>اسم الزبون:</div>
+                    <input 
+                      value={form.name} 
+                      onChange={e => setForm({ ...form, name: e.target.value })} 
+                      style={S.modalInput} 
+                      placeholder="اكتب اسم الكابتن" 
+                    />
+                    
+                    <div style={{marginBottom: "4px", fontSize: "14px", color: "#94a3b8"}}>رقم الموبايل:</div>
+                    <input 
+                      value={form.phone} 
+                      onChange={e => setForm({ ...form, phone: e.target.value })} 
+                      style={S.modalInput} 
+                      placeholder="01xxxxxxxxx" 
+                    />
+                    
+                    <div style={{marginBottom: "4px", fontSize: "14px", color: "#94a3b8"}}>مدة الحجز:</div>
+                    <select 
+                      value={form.duration} 
+                      onChange={e => setForm({ ...form, duration: e.target.value })} 
+                      style={S.modalInput}
+                    >
+                      <option value="1">ساعة واحدة ⏱️</option>
+                      <option value="2">ساعتين (٢ ساعة) ⏱️</option>
+                      <option value="3">3 ساعات ⏱️</option>
                     </select>
-                    <button style={S.btnGreen} onClick={handleBook}>إرسال</button>
+                    
+                    {formError && <p style={{color: '#ef4444', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0', textAlign: 'center'}}>{formError}</p>}
+                    
+                    <button style={S.modalBtn} onClick={handleBook}>
+                      إرسال الطلب وتأكيد الحجز 🚀
+                    </button>
                   </div>
                 </div>
               )}
