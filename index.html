@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>استكانه أرينا - الإدارة الشاملة المؤمنة</title>
+    <title>استكانه أرينا - الإدارة والعمليات</title>
     
     <style>
         body {
@@ -12,6 +12,7 @@
             background-color: #0f172a !important;
             font-family: system-ui, -apple-system, sans-serif;
             direction: rtl;
+            color: #f1f5f9;
         }
     </style>
 
@@ -24,7 +25,8 @@
     
     <div id="root"></div>
 
-    <script type="text/babel">
+    <script type="text/babel" data-presets="react">
+        /** @jsx React.createElement */
         const useState = React.useState;
         const useEffect = React.useEffect;
 
@@ -38,8 +40,6 @@
           "5:00 مساءً", "6:00 مساءً", "7:00 مساءً", "8:00 مساءً", 
           "9:00 مساءً", "10:00 مساءً", "11:00 مساءً", "12:00 مساءً"
         ];
-
-        const FIELD_NAME = "استكانه أرينا";
 
         function parseTo24Hour(timeStr) {
           if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0;
@@ -73,17 +73,30 @@
 
         function todayStr() { return new Date().toISOString().split("T")[0]; }
 
+        // التنسيقات المطابقة تماماً لشاشتك المفضلة
         const S = {
-          root: { minHeight: "100vh", background: "#0f172a", color: "#f1f5f9", display: "flex", flexDirection: "column" },
-          contentWrapper: { flex: 1 },
-          header: { background: "#1e293b", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e" },
-          logo: { fontSize: 22, fontWeight: 800, color: "#22c55e" },
-          toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' },
-          page: { maxWidth: 820, margin: "0 auto", padding: "24px 16px", width: "100%", boxSizing: "border-box" },
-          hero: { textAlign: "center", padding: "20px 0" },
-          heroTitle: { fontSize: 32, fontWeight: 800, color: "#22c55e", margin: 0 },
-          heroSub: { color: "#94a3b8", marginTop: 8, fontSize: 16 },
-          card: { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 16, border: "1px solid #334155" },
+          root: { minHeight: "100vh", background: "#0f172a", display: "flex", flexDirection: "column" },
+          header: { background: "#111827", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e" },
+          logoWrapper: { display: "flex", alignItems: "center", gap: "6px" },
+          logoText: { fontSize: 20, fontWeight: "bold", color: "#22c55e" },
+          headerLink: { color: "#9ca3af", fontSize: 14, textDecoration: "none", display: "flex", alignItems: "center", gap: "4px" },
+          page: { maxWidth: "900px", margin: "0 auto", padding: "24px 16px", width: "100%", boxSizing: "border-box" },
+          adminRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" },
+          adminTitle: { fontSize: 22, fontWeight: "bold", margin: 0, color: "#fff" },
+          tabs: { display: "flex", gap: "8px" },
+          tabBtn: (active, countColor) => ({
+            background: active ? "#22c55e" : "#1e293b",
+            color: active ? "#0f172a" : "#9ca3af",
+            border: active ? "1px solid #22c55e" : "1px solid #334155",
+            padding: "8px 16px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }),
+          card: { background: "#1e293b", borderRadius: "12px", padding: "16px", marginBottom: "16px", border: "1px solid #334155" },
           label: { display: "block", color: "#94a3b8", marginBottom: 8, fontWeight: 600 },
           dateInput: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 16 },
           legendRow: { display: "flex", gap: 12, marginBottom: 16 },
@@ -94,25 +107,24 @@
           slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", cursor: "not-allowed", opacity: 0.8 },
           slotTime: { display: "block", fontWeight: 800, fontSize: 15 },
           slotLabel: { display: "block", fontSize: 12, marginTop: 4 },
+          // استايل كروت الحجوزات المطابق للصورة
+          bookingCard: { background: "#151f32", borderRadius: "8px", padding: "18px", marginBottom: "12px", border: "1px solid #1e293b" },
+          bookingHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" },
+          bookingName: { fontSize: 18, fontWeight: "bold", color: "#fff" },
+          statusBadge: (type) => ({ color: type === "pending" ? "#f59e0b" : "#22c55e", fontWeight: "bold", display: "flex", alignItems: "center", gap: "4px" }),
+          bookingDetails: { display: "flex", gap: "20px", color: "#9ca3af", fontSize: 15, flexWrap: "wrap" },
+          detailItem: { display: "flex", alignItems: "center", gap: "6px" },
+          // المودال والـ Inputs
           overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 },
           modalCard: { background: "#1e293b", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, border: "1px solid #334155" },
           modalTitle: { color: "#22c55e", fontSize: 22, margin: 0, fontWeight: 800 },
           formGroup: { marginBottom: 16 },
           input: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 15 },
           select: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px", borderRadius: 8, width: "100%", boxSizing: "border-box", fontSize: 15, cursor: "pointer" },
-          errMsg: { color: "#f87171", fontSize: 14, fontWeight: "bold", margin: "10px 0" },
           row: { display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 20 },
           btnGreen: { background: "#22c55e", color: "#0f172a", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 800, cursor: "pointer", fontSize: 15 },
           btnGray: { background: "#334155", color: "#f1f5f9", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontSize: 15 },
-          loginCard: { background: "#1e293b", borderRadius: 16, padding: 32, maxWidth: 400, margin: "40px auto", border: "1px solid #334155" },
-          bookingCard: { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, border: "1px solid #334155" },
-          bookingTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-          bookingMid: { display: "flex", gap: 16, color: "#94a3b8", fontSize: 14, marginTop: 12 },
-          adminTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-          adminTitle: { fontSize: 22, margin: 0 },
-          tabs: { display: "flex", gap: 8 },
-          tab: { background: "#1e293b", color: "#94a3b8", border: "1px solid #334155", padding: "8px 16px", borderRadius: 8, cursor: "pointer" },
-          tabActive: { background: "#22c55e", color: "#0f172a", fontWeight: 800, border: "1px solid #22c55e", padding: "8px 16px", borderRadius: 8, cursor: "pointer" }
+          toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' }
         };
 
         function App() {
@@ -120,19 +132,16 @@
           const [bookings, setBookings] = useState([]);
           const [loading, setLoading] = useState(true);
           const [selectedDate, setSelectedDate] = useState(todayStr());
-          const [adminDate, setAdminDate] = useState(todayStr());
           const [modal, setModal] = useState(null);
           const [form, setForm] = useState({ name: "", phone: "", duration: "1" });
           const [formError, setFormError] = useState("");
           const [toast, setToast] = useState({ msg: "", type: "success" });
           const [adminTab, setAdminTab] = useState("pending");
-          const [adminPass, setAdminPass] = useState("");
-          const [adminUnlocked, setAdminUnlocked] = useState(() => localStorage.getItem("estikana_admin_logged") === "true");
-          const [passError, setPassError] = useState("");
+          const [adminUnlocked, setAdminUnlocked] = useState(true); // لفتح اللوحة مباشرة عبر الرابط المخصص
 
           useEffect(() => {
             fetchBookings();
-            const channels = supabaseClient.channel('custom-all-channel')
+            const channels = supabaseClient.channel('realtime-bookings')
               .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { fetchBookings(); })
               .subscribe();
             return () => { channels.unsubscribe(); };
@@ -205,102 +214,117 @@
             }
           }
 
-          async function handleAdminLogin() {
-            if (!adminPass.trim()) return;
-            setPassError("");
-            try {
-              const { data, error } = await supabaseClient.from('admin_config').select('value').eq('key', 'admin_password').single();
-              if (!error && data && data.value === adminPass.trim()) {
-                setAdminUnlocked(true);
-                localStorage.setItem("estikana_admin_logged", "true");
-              } else {
-                setPassError("كلمة المرور غير صحيحة ❌");
-              }
-            } catch (e) { setPassError("حدث خطأ في الاتصال بالسيرفر"); }
-          }
-
-          const adminDayAll = bookings.filter(b => b.date === adminDate);
-          const pendingList = adminDayAll.filter(b => b.status === "pending");
-          const confirmedList = adminDayAll.filter(b => b.status === "confirmed");
+          // تصفية الحجوزات لليوم المختار في لوحة الإدارة (أو كل الحجوزات)
+          const pendingList = bookings.filter(b => b.status === "pending");
+          const confirmedList = bookings.filter(b => b.status === "confirmed");
 
           return (
             <div style={S.root}>
-              <div style={S.contentWrapper}>
-                <header style={S.header}>
-                  <div style={S.logo}>⚽ {FIELD_NAME}</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>{view === "admin" ? "🛠️ لوحة التحكم" : "👋 أهلاً بك"}</div>
-                </header>
+              <header style={S.header}>
+                <div style={S.logoWrapper}>
+                  <span style={S.logoText}>استكانه أرينا</span>
+                  <span style={{ fontSize: "20px" }}>⚽</span>
+                </div>
+                <a href="?view=admin" style={S.headerLink}>
+                  <span>لوحة التحكم</span>
+                  <span>🛠️</span>
+                </a>
+              </header>
 
-                {toast.msg && <div style={{ ...S.toast, background: toast.type === "warn" ? "#f59e0b" : "#22c55e" }}>{toast.msg}</div>}
+              {toast.msg && <div style={{ ...S.toast, background: toast.type === "warn" ? "#f59e0b" : "#22c55e" }}>{toast.msg}</div>}
 
-                {loading ? (
-                  <div style={{ color: "#94a3b8", textAlign: "center", padding: "100px", fontSize: "18px", fontWeight: "bold" }}>🔄 جاري تحميل الملعب...</div>
-                ) : (
-                  view === "booking" ? (
-                    <div style={S.page}>
-                      <div style={S.hero}>
-                        <h1 style={S.heroTitle}>احجز ملعبك دلوقتي</h1>
-                        <p style={S.heroSub}>اختار اليوم والساعة المناسبة وابعت طلبك في ثواني</p>
-                      </div>
-                      <div style={S.card}>
-                        <label style={S.label}>📅 اختار يوم الحجز</label>
-                        <input type="date" value={selectedDate} min={todayStr()} onChange={e => setSelectedDate(e.target.value)} style={S.dateInput} />
-                      </div>
-                      <div style={S.legendRow}>
-                        <span style={S.chip("#4ade80", "#14532d")}>🟩 متاح للحجز</span>
-                        <span style={S.chip("#f87171", "#450a0a")}>🟥 محجوز أو مضى</span>
-                      </div>
-                      <div style={S.slotsGrid}>
-                        {TIME_SLOTS.map(time => {
-                          const booked = bookedSlots.has(time);
-                          const past = isTimeInPast(time, selectedDate);
-                          const unavailable = booked || past;
-                          return (
-                            <div key={time} onClick={() => !unavailable && setModal({ time })} style={{ ...S.slot, ...(unavailable ? S.slotBooked : S.slotFree) }}>
-                              <span style={S.slotTime}>{time}</span>
-                              <span style={S.slotLabel}>{booked ? "محجوز" : past ? "انتهى" : `${getPriceForSlot(time)} جنيه`}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
+              {loading ? (
+                <div style={{ color: "#94a3b8", textAlign: "center", padding: "100px", fontSize: "18px", fontWeight: "bold" }}>🔄 جاري الاتصال بالملعب...</div>
+              ) : (
+                view === "booking" ? (
+                  <div style={S.page}>
+                    <div style={{ textAlign: "center", padding: "20px 0" }}>
+                      <h1 style={{ fontSize: 32, fontWeight: 800, color: "#22c55e", margin: 0 }}>احجز ملعبك دلوقتي</h1>
+                      <p style={{ color: "#94a3b8", marginTop: 8, fontSize: 16 }}>اختار اليوم والساعة المناسبة وابعت طلبك في ثواني</p>
                     </div>
-                  ) : (
-                    <div style={S.page}>
-                      {!adminUnlocked ? (
-                        <div style={S.loginCard}>
-                          <h2 style={S.modalTitle}>دخول لوحة التحكم</h2>
-                          <input type="password" placeholder="كلمة المرور" value={adminPass} onChange={e => setAdminPass(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAdminLogin()} style={S.input} />
-                          {passError && <p style={S.errMsg}>{passError}</p>}
-                          <button style={{ ...S.btnGreen, width: "100%", marginTop: 10 }} onClick={handleAdminLogin}>دخول</button>
-                        </div>
-                      ) : (
-                        <>
-                          <div style={S.adminTop}>
-                            <h2 style={S.adminTitle}>🏟️ لوحة إدارة الحجوزات</h2>
-                            <div style={S.tabs}>
-                              <button style={adminTab === "pending" ? S.tabActive : S.tab} onClick={() => setAdminTab("pending")}>⏳ الانتظار ({pendingList.length})</button>
-                              <button style={adminTab === "confirmed" ? S.tabActive : S.tab} onClick={() => setAdminTab("confirmed")}>✅ المؤكدة ({confirmedList.length})</button>
-                            </div>
+                    <div style={S.card}>
+                      <label style={S.label}>📅 اختار يوم الحجز</label>
+                      <input type="date" value={selectedDate} min={todayStr()} onChange={e => setSelectedDate(e.target.value)} style={S.dateInput} />
+                    </div>
+                    <div style={S.legendRow}>
+                      <span style={S.chip("#4ade80", "#14532d")}>🟩 متاح الحجز</span>
+                      <span style={S.chip("#f87171", "#450a0a")}>🟥 محجوز أو مضى</span>
+                    </div>
+                    <div style={S.slotsGrid}>
+                      {TIME_SLOTS.map(time => {
+                        const booked = bookedSlots.has(time);
+                        const past = isTimeInPast(time, selectedDate);
+                        const unavailable = booked || past;
+                        return (
+                          <div key={time} onClick={() => !unavailable && setModal({ time })} style={{ ...S.slot, ...(unavailable ? S.slotBooked : S.slotFree) }}>
+                            <span style={S.slotTime}>{time}</span>
+                            <span style={S.slotLabel}>{booked ? "محجوز" : past ? "انتهى" : `${getPriceForSlot(time)} جنيه`}</span>
                           </div>
-                          {adminTab === "pending" && pendingList.map(b => (
-                            <div key={b.id} style={S.bookingCard}>
-                              <div style={S.bookingTop}><span><b>{b.name}</b></span><span style={{color: '#fbbf24'}}>⏳ انتظار</span></div>
-                              <div style={S.bookingMid}><span>📱 {b.phone}</span><span>⏰ {b.time} ({b.duration}س)</span><span>💰 {b.price} ج</span></div>
-                            </div>
-                          ))}
-                          {adminTab === "confirmed" && confirmedList.map(b => (
-                            <div key={b.id} style={S.bookingCard}>
-                              <div style={S.bookingTop}><span><b>{b.name}</b></span><span style={{color: '#4ade80'}}>✅ مؤكد</span></div>
-                              <div style={S.bookingMid}><span>📱 {b.phone}</span><span>⏰ {b.time} ({b.duration}س)</span><span>💰 {b.price} ج</span></div>
-                            </div>
-                          ))}
-                        </>
-                      )}
+                        );
+                      })}
                     </div>
-                  )
-                )}
-              </div>
+                  </div>
+                ) : (
+                  <div style={S.page}>
+                    <div style={S.adminRow}>
+                      <div style={S.tabs}>
+                        <button style={S.tabBtn(adminTab === "pending")} onClick={() => setAdminTab("pending")}>
+                          <span>الانتظار ({pendingList.length})</span>
+                          <span>⏳</span>
+                        </button>
+                        <button style={S.tabBtn(adminTab === "confirmed")} onClick={() => setAdminTab("confirmed")}>
+                          <span>المؤكدة ({confirmedList.length})</span>
+                          <span>✅</span>
+                        </button>
+                      </div>
+                      <h2 style={S.adminTitle}>📋 لوحة إدارة الحجوزات</h2>
+                    </div>
 
+                    {/* عرض الحجوزات بنفس التصميم الدقيق المطلق */}
+                    {adminTab === "pending" && (
+                      pendingList.length === 0 ? <p style={{color: '#64748b', textAlign:'center'}}>لا توجد طلبات في الانتظار حالياً.</p> :
+                      pendingList.map(b => (
+                        <div key={b.id} style={S.bookingCard}>
+                          <div style={S.bookingHeader}>
+                            <div style={S.statusBadge("pending")}>
+                              <span>انتظار</span>
+                              <span>⏳</span>
+                            </div>
+                            <div style={S.bookingName}>{b.name}</div>
+                          </div>
+                          <div style={S.bookingDetails}>
+                            <div style={S.detailItem}><span>{b.phone}</span><span>📱</span></div>
+                            <div style={S.detailItem}><span>{b.time} ({b.duration}س)</span><span>⏰</span></div>
+                            <div style={S.detailItem}><span>{b.price} ج</span><span>💰</span></div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+
+                    {adminTab === "confirmed" && (
+                      confirmedList.length === 0 ? <p style={{color: '#64748b', textAlign:'center'}}>لا توجد حجوزات مؤكدة بعد.</p> :
+                      confirmedList.map(b => (
+                        <div key={b.id} style={S.bookingCard}>
+                          <div style={S.bookingHeader}>
+                            <div style={S.statusBadge("confirmed")}>
+                              <span>مؤكد</span>
+                              <span>✅</span>
+                            </div>
+                            <div style={S.bookingName}>{b.name}</div>
+                          </div>
+                          <div style={S.bookingDetails}>
+                            <div style={S.detailItem}><span>{b.phone}</span><span>📱</span></div>
+                            <div style={S.detailItem}><span>{b.time} ({b.duration}س)</span><span>⏰</span></div>
+                            <div style={S.detailItem}><span>{b.price} ج</span><span>💰</span></div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )
+              )}
+
+              {/* مودال طلب الحجز */}
               {modal && (
                 <div style={S.overlay} onClick={() => setModal(null)}>
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
@@ -332,7 +356,7 @@
                       <span style={{fontSize: 18, fontWeight: 'bold', color: '#22c55e'}}>{calculateBookingPrice(modal.time, parseInt(form.duration))} جنيه</span>
                     </div>
 
-                    {formError && <p style={S.errMsg}>{formError}</p>}
+                    {formError && <p style={{color: '#f87171', fontWeight: 'bold'}}>{formError}</p>}
                     
                     <div style={S.row}>
                       <button style={S.btnGray} onClick={() => setModal(null)}>إلغاء</button>
