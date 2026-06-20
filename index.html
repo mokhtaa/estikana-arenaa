@@ -103,7 +103,6 @@
           footer: { background: "#111827", padding: "16px", textAlign: "center", borderTop: "1px solid #1e293b", color: "#94a3b8", fontSize: "14px", marginTop: "auto" },
           label: { display: "block", marginBottom: "8px", color: "#94a3b8", fontSize: "14px" },
 
-          /* 🌟 التنسيق الجديد والمحسن للنافذة المنبثقة (Modal) */
           modalOverlay: { 
             position: "fixed", 
             inset: 0, 
@@ -210,7 +209,6 @@
             setLoading(false);
           }
 
-          /* 🔒 جلب آمن من جدول admin_config المحدث حسب صورتك */
           async function handleLogin(e) {
             e.preventDefault();
             setLoginError("");
@@ -224,9 +222,9 @@
               if (!error && data && data.value === passwordInput) {
                 setIsAuthorized(true);
                 sessionStorage.setItem("admin_logged", "true");
-                showToast("🔓 أهلاً بك يا كابتن! تم تسجيل الدخول بنجاح.");
+                showToast(" أهلاً بك يا كابتن! تم تسجيل الدخول بنجاح.");
               } else {
-                setLoginError("❌ كلمة المرور غير صحيحة!");
+                setLoginError(" كلمة المرور غير صحيحة!");
               }
             } catch (err) {
               setLoginError("خطأ في الاتصال بقاعدة البيانات.");
@@ -262,7 +260,7 @@
             if (error) { showToast("حدث خطأ في الشبكة", "warn"); } 
             else {
               setModal(null); setForm({ name: "", phone: "", duration: "1" });
-              showToast("✅ تم إرسال طلب الحجز بنجاح!");
+              showToast(" تم إرسال طلب الحجز بنجاح!");
               fetchBookings();
             }
           }
@@ -272,9 +270,10 @@
             if (error) {
               showToast("فشل تحديث الحالة", "warn");
             } else {
-              showToast(newStatus === "confirmed" ? "🎉 تم تأكيد الحجز" : "❌ تم الإلغاء");
+              showToast(newStatus === "confirmed" ? " تم تأكيد الحجز" : "تم الإلغاء");
               if (newStatus === "confirmed") {
-                const message = `أهلاً بك كابتن ${booking.name} 🏟️ من ملعب استكانه أرينا، تم تأكيد حجزك بنجاح.\n📅 التاريخ: ${booking.date}\n⏰ الساعة: ${booking.time}\n⏱️ المدة: ${booking.duration} ساعة\n💰 الحساب الإجمالي: ${booking.price} جنيه\nتنورنا في أي وقت! ⚽`;
+                const message = `أهلاً بك كابتن ${booking.name}  من ملعب استكانه أرينا، تم تأكيد حجزك بنجاح.\n📅 التاريخ: ${booking.date}\n⏰ الساعة: ${booking.time}\n⏱️ المدة: ${booking.duration} ساعة\n💰 الحساب الإجمالي: ${booking.price} جنيه\nبرجاء الحضور قبل الموعد بـ 10 دقائق �
+نتمنى لك وقت ممتع! �! ⚽`;
                 const whatsappUrl = `https://wa.me/2${booking.phone}?text=${encodeURIComponent(message)}`;
                 window.open(whatsappUrl, '_blank');
               }
@@ -346,10 +345,14 @@
                     <div style={S.slotsGrid}>
                       {TIME_SLOTS.map(time => {
                         const isBooked = bookedSlots.has(time);
+                        const slotPrice = getPriceForSlot(time); /* 💰 حساب سعر الساعة الحالية */
                         return (
                           <div key={time} onClick={() => !isBooked && setModal({ time })} style={isBooked ? S.slotBooked : S.slotFree}>
-                            <span>{time}</span>
-                            <span style={{display:'block', fontSize:11}}>{isBooked ? "محجوز" : "متاح"}</span>
+                            <span style={{ fontWeight: "bold" }}>{time}</span>
+                            {/* 💡 هنا قمنا بإضافة طباعة السعر لكل ساعة بوضوح داخل الزرار */}
+                            <span style={{display:'block', fontSize:12, marginTop: 4, opacity: 0.9}}>
+                              {isBooked ? "محجوز 🚫" : `${slotPrice} جنيه 💰`}
+                            </span>
                           </div>
                         );
                       })}
@@ -459,7 +462,6 @@
                 )
               )}
 
-              {/* 🌟 النافذة المنبثقة المحدثة بالكامل وبدون تعليقات مكسورة */}
               {modal && (
                 <div style={S.modalOverlay} onClick={() => setModal(null)}>
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
@@ -495,14 +497,14 @@
                     {formError && <p style={{color: '#ef4444', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0', textAlign: 'center'}}>{formError}</p>}
                     
                     <button style={S.modalBtn} onClick={handleBook}>
-                      إرسال الطلب وتأكيد الحجز 🚀
+                      إرسال الطلب وتأكيد الحجز 
                     </button>
                   </div>
                 </div>
               )}
 
               <footer style={S.footer}>
-                <div>تطوير بواسطة كابتن: <strong style={{color: '#22c55e'}}>Mokhtar Emad</strong> 🚀 © ٢٠٢٦ استكانه أرينا.</div>
+                <div>تطوير بواسطة : <strong style={{color: '#22c55e'}}>Mokhtar Emad</strong>  © ٢٠٢٦ استكانه أرينا.</div>
               </footer>
             </div>
           );
