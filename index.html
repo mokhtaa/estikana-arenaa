@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>استكانه أرينا - الإدارة الشاملة المؤمنة</title>
-    <!-- استدعاء المكتبات من الـ CDN كـ Globals متوافقة مع المتصفح مباشرة -->
+    <!-- استدعاء المكتبات الأساسية بشكل صحيح ومتوافق كلياً مع المتصفح -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -13,18 +13,18 @@
 <body>
     <div id="root"></div>
 
-    <!-- تم إزالة data-type="module" لحل مشكلة react/jsx-runtime نهائياً -->
+    <!-- سكريبت بابل عادي بدون داتا موديول وبدون أي جمل import بالداخل -->
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // 🔐 بيانات الربط الخاصة بمشروعك (آمنة ومحمية بـ RLS)
+        // 🔐 بيانات الربط (مباشرة وآمنة عبر السياسات)
         const SUPABASE_URL = "https://wiugwyhpuhokhocttwbq.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_zzDhn9DNIAdjJLn8aNzKzA_4IapbzcL";
         
-        // جلب العميل من المتغير العام (Global) في المتصفح بدون أي import
+        // 🚀 هنا السر: جلب العميل مباشرة من الـ window لتجنب خطأ الـ import تماماً
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ⏰ مواعيد الحجوزات بنظام 12 ساعة من 1 ظهراً إلى 12 مساءً
+        // ⏰ مواعيد الحجوزات بنظام 12 ساعة
         const TIME_SLOTS = [
           "1:00 ظهراً", "2:00 ظهراً", "3:00 عصراً", "4:00 عصراً", 
           "5:00 مساءً", "6:00 مساءً", "7:00 مساءً", "8:00 مساءً", 
@@ -33,29 +33,20 @@
 
         const FIELD_NAME = "استكانه أرينا";
 
-        // 🛠️ دالة تحويل المواعيد إلى نظام 24 ساعة
         function parseTo24Hour(timeStr) {
           if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0;
-          
           try {
             const hour = parseInt(timeStr.split(":")[0]);
-            if (!timeStr.includes("ظهراً") && !timeStr.includes("عصراً") && !timeStr.includes("مساءً")) {
-              return hour;
-            }
-            if (timeStr.includes("ظهراً") || timeStr.includes("عصراً")) {
-              return hour + 12; 
-            }
+            if (!timeStr.includes("ظهراً") && !timeStr.includes("عصراً") && !timeStr.includes("مساءً")) return hour;
+            if (timeStr.includes("ظهراً") || timeStr.includes("عصراً")) return hour + 12; 
             if (timeStr.includes("مساءً")) {
               if (hour === 12) return 24;
               return hour + 12;
             }
             return hour;
-          } catch (e) {
-            return 0;
-          }
+          } catch (e) { return 0; }
         }
 
-        // 💰 حساب السعر بناءً على الساعة
         function getPriceForSlot(timeStr) {
           const hour24 = parseTo24Hour(timeStr);
           return hour24 >= 13 && hour24 <= 18 ? 100 : 150;
@@ -81,10 +72,7 @@
         }
 
         function genId() { return Math.random().toString(36).slice(2, 9).toUpperCase(); }
-
-        function openWA(phone, message) {
-          window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(message)}`, "_blank");
-        }
+        function openWA(phone, message) { window.open(`https://wa.me/2${phone}?text=${encodeURIComponent(message)}`, "_blank"); }
 
         function buildConfirmMsg(b) {
           return `مرحباً ${b.name} 👋\n\n✅ *تم تأكيد حجزك في ${FIELD_NAME}* ⚽\n\n━━━━━━━━━━━━━━━━━━\n📅 التاريخ : ${formatDate(b.date)}\n⏰ الوقت   : ${b.time}\n⏱ المدة   : ${b.duration} ساعة\n💰 المبلغ  : ${b.price} جنيه\n━━━━━━━━━━━━━━━━━━\n\nبرجاء الحضور قبل الموعد بـ 10 دقائق 🙏\nنتمنى لك وقت ممتع! 🌟`;
@@ -138,9 +126,7 @@
           function isTimeInPast(timeStr, dateStr) {
             if (dateStr !== todayStr()) return false;
             const now = new Date();
-            const currentHour = now.getHours();
-            const slotHour24 = parseTo24Hour(timeStr);
-            return slotHour24 <= currentHour;
+            return parseTo24Hour(timeStr) <= now.getHours();
           }
 
           const dayBookings = bookings.filter(b => b.date === selectedDate && b.status !== "cancelled");
@@ -214,30 +200,17 @@
 
           async function handleAdminLogin() {
             if (!adminPass.trim()) return;
-            setLoginLoading(true);
-            setPassError("");
+            setLoginLoading(true); setPassError("");
             try {
-              const { data, error } = await supabaseClient
-                .from('admin_config')
-                .select('value')
-                .eq('key', 'admin_password')
-                .single();
-              
+              const { data, error } = await supabaseClient.from('admin_config').select('value').eq('key', 'admin_password').single();
               if (!error && data && data.value === adminPass.trim()) {
                 setAdminUnlocked(true);
                 localStorage.setItem("estikana_admin_logged", "true");
               } else {
                 setPassError("كلمة المرور غير صحيحة ❌");
               }
-            } catch (e) {
-              setPassError("حدث خطأ في الاتصال بالسيرفر");
-            }
+            } catch (e) { setPassError("حدث خطأ في الاتصال بالسيرفر"); }
             setLoginLoading(false);
-          }
-
-          function handleAdminLogout() {
-            setAdminUnlocked(false); setAdminPass("");
-            localStorage.removeItem("estikana_admin_logged");
           }
 
           const adminDayAll = bookings.filter(b => b.date === adminDate);
@@ -274,9 +247,6 @@
                   <span>💰 {b.price} ج</span>
                   <span>{b.paid ? "💵 مدفوع" : "🔴 لم يُدفع"}</span>
                 </div>
-                <div style={S.bookingFooter}>
-                  <span style={S.detailLink}>اضغط للتفاصيل وإدارة الحجز ←</span>
-                </div>
               </div>
             );
           }
@@ -286,16 +256,13 @@
               <div style={S.contentWrapper}>
                 <header style={S.header}>
                   <div style={S.logo}>⚽ {FIELD_NAME}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>{view === "admin" ? "🛠️ لوحة التحكم" : "👋 أهلاً بك"}</div>
-                    {view === "admin" && adminUnlocked && <button onClick={handleAdminLogout} style={S.logoutBtn}>خروج 🚪</button>}
-                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{view === "admin" ? "🛠️ لوحة التحكم" : "👋 أهلاً بك"}</div>
                 </header>
 
                 {toast.msg && <div style={{ ...S.toast, background: toast.type === "warn" ? "#f59e0b" : "#22c55e" }}>{toast.msg}</div>}
 
                 {loading ? (
-                  <div style={{ color: "#94a3b8", textAlign: "center", padding: "100px", fontSize: "18px", fontWeight: "bold" }}>🔄 جاري الاتصال بالداتا بيز الحية...</div>
+                  <div style={{ color: "#94a3b8", textAlign: "center", padding: "100px", fontSize: "18px", fontWeight: "bold" }}>🔄 جاري الاتصال...</div>
                 ) : (
                   view === "booking" ? (
                     <div style={S.page}>
@@ -324,112 +291,28 @@
                           );
                         })}
                       </div>
-                      <p style={S.priceNote}>☀️ نهاراً (1ظهراً إلى 6مساءً): 100 ج/ساعة | 🌙 ليلاً (7مساءً إلى 12مساءً): 150 ج/ساعة</p>
                     </div>
                   ) : (
                     <div style={S.page}>
                       {!adminUnlocked ? (
                         <div style={S.loginCard}>
-                          <div style={{ fontSize: 52, marginBottom: 12 }}>🔐</div>
                           <h2 style={S.modalTitle}>دخول الإدارة الآمن</h2>
-                          <input type="password" placeholder="كلمة المرور" value={adminPass} disabled={loginLoading}
-                            onChange={e => setAdminPass(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAdminLogin()} style={S.input} />
+                          <input type="password" placeholder="كلمة المرور" value={adminPass} onChange={e => setAdminPass(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAdminLogin()} style={S.input} />
                           {passError && <p style={S.errMsg}>{passError}</p>}
-                          <button style={{ ...S.btnGreen, width: "100%", marginTop: 10, opacity: loginLoading ? 0.6 : 1 }} disabled={loginLoading} onClick={handleAdminLogin}>
-                            {loginLoading ? "جاري التحقق سحابياً..." : "دخول آمن"}
-                          </button>
+                          <button style={{ ...S.btnGreen, width: "100%", marginTop: 10 }} onClick={handleAdminLogin}>دخول</button>
                         </div>
                       ) : (
                         <>
                           <div style={S.adminTop}>
                             <h2 style={S.adminTitle}>🏟️ لوحة إدارة {FIELD_NAME}</h2>
                             <div style={S.tabs}>
-                              {[
-                                { key: "pending", label: `⏳ انتظار (${pendingList.length})` },
-                                { key: "confirmed", label: `✅ مؤكدة (${confirmedList.length})` },
-                                { key: "all", label: "📋 الكل اليوم" },
-                                { key: "report", label: "📊 التقارير الشهري" },
-                              ].map(t => (
+                              {[{ key: "pending", label: `⏳ انتظار (${pendingList.length})` }, { key: "confirmed", label: `✅ مؤكدة (${confirmedList.length})` }, { key: "report", label: "📊 التقارير" }].map(t => (
                                 <button key={t.key} style={adminTab === t.key ? S.tabActive : S.tab} onClick={() => setAdminTab(t.key)}>{t.label}</button>
                               ))}
                             </div>
                           </div>
-
-                          {adminTab !== "report" && (
-                            <div style={S.card}>
-                              <label style={S.label}>📅 اختار يوم للإدارة</label>
-                              <input type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} style={S.dateInput} />
-                            </div>
-                          )}
-
-                          {adminTab !== "report" && (
-                            <div style={S.statsRow}>
-                              {[
-                                { n: pendingList.length, l: "في الانتظار", c: "#fbbf24" },
-                                { n: confirmedList.length, l: "مؤكدة", c: "#4ade80" },
-                                { n: cancelledList.length, l: "ملغية", c: "#f87171" },
-                                { n: confirmedList.filter(b => b.paid).reduce((s, b) => s + b.price, 0) + " ج", l: "كاش محصّل اليوم", c: "#34d399" },
-                              ].map((s, i) => (
-                                <div key={i} style={S.statCard}>
-                                  <div style={{ ...S.statNum, color: s.c }}>{s.n}</div>
-                                  <div style={S.statLbl}>{s.l}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {adminTab === "pending" && (pendingList.length === 0 ? <div style={S.empty}>🎉 لا يوجد حجوزات في انتظار التأكيد لهذا اليوم</div> : pendingList.map(b => <BookingCard key={b.id} b={b} />))}
-                          {adminTab === "confirmed" && (confirmedList.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مؤكدة في هذا اليوم</div> : confirmedList.map(b => <BookingCard key={b.id} b={b} />))}
-                          {adminTab === "all" && (adminDayAll.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مسجلة في هذا اليوم</div> : [...adminDayAll].sort((a, b) => parseTo24Hour(a.time) - parseTo24Hour(b.time)).map(b => <BookingCard key={b.id} b={b} />))}
-
-                          {adminTab === "report" && (
-                            <>
-                              <div style={S.card}>
-                                <label style={S.label}>📊 اختار شهر التقارير والحسابات</label>
-                                <input type="month" value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={S.dateInput} />
-                              </div>
-                              <div style={S.statsRow}>
-                                {[
-                                  { n: reportBookings.length, l: "إجمالي الحجوزات", c: "#f1f5f9" },
-                                  { n: reportBookings.filter(b => b.status === "confirmed").length, l: "مؤكدة", c: "#4ade80" },
-                                  { n: totalRevenue + " ج", l: "إيرادات كاش محصلة", c: "#34d399" },
-                                  { n: pendingRevenue + " ج", l: "فلوس لسه بره", c: "#fbbf24" },
-                                ].map((s, i) => (
-                                  <div key={i} style={S.statCard}>
-                                    <div style={{ ...S.statNum, color: s.c }}>{s.n}</div>
-                                    <div style={S.statLbl}>{s.l}</div>
-                                  </div>
-                                ))}
-                              </div>
-                              <div style={S.reportCard}>
-                                <h3 style={S.reportTitle}>📋 كشف حجوزات شهر {reportMonth}</h3>
-                                {reportBookings.length === 0 ? <div style={S.empty}>لا يوجد حجوزات في هذا الشهر</div> : (
-                                  <div style={{ overflowX: "auto" }}>
-                                    <table style={S.table}>
-                                      <thead>
-                                        <tr style={{ background: "#1e293b" }}>
-                                          {["الاسم", "التاريخ", "الوقت", "المدة", "المبلغ", "الحالة", "الدفع"].map(h => <th key={h} style={S.th}>{h}</th>)}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {[...reportBookings].sort((a, b) => a.date.localeCompare(b.date) || parseTo24Hour(a.time) - parseTo24Hour(b.time)).map((b, i) => (
-                                          <tr key={b.id} style={{ background: i % 2 === 0 ? "#0f172a" : "#1a2332", cursor: "pointer" }} onClick={() => setDetailModal(b)}>
-                                            <td style={S.td}>{b.name}</td>
-                                            <td style={S.td}>{b.date}</td>
-                                            <td style={S.td}>{b.time}</td>
-                                            <td style={S.td}>{b.duration}س</td>
-                                            <td style={S.td}>{b.price} ج</td>
-                                            <td style={S.td}>{b.status === "confirmed" ? "✅ مؤكد" : b.status === "cancelled" ? "🚫 ملغي" : "⏳ انتظار"}</td>
-                                            <td style={S.td}>{b.paid ? "💵 مدفوع" : "🔴 لم يدفع"}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
-                              </div>
-                            </>
-          )}
+                          {adminTab === "pending" && pendingList.map(b => <BookingCard key={b.id} b={b} />)}
+                          {adminTab === "confirmed" && confirmedList.map(b => <BookingCard key={b.id} b={b} />)}
                         </>
                       )}
                     </div>
@@ -437,85 +320,22 @@
                 )}
               </div>
 
-              <footer style={S.footer}>
-                <div>جميع الحقوق محفوظة لملعب {FIELD_NAME} &copy; {new Date().getFullYear()}</div>
-                <div style={{ marginTop: 4, fontSize: 13, color: "#94a3b8" }}>
-                  تطوير بواسطة: <span style={S.devName}>Mokhtar_Emad</span> 🚀
-                </div>
-              </footer>
-
               {modal && (
                 <div style={S.overlay} onClick={() => setModal(null)}>
                   <div style={S.modalCard} onClick={e => e.stopPropagation()}>
                     <h2 style={S.modalTitle}>📋 طلب حجز جديد</h2>
-                    <p style={S.modalSub}>📅 {formatDate(selectedDate)} &nbsp;|&nbsp; ⏰ {modal.time}</p>
-                    {[
-                      { key: "name", label: "الاسم الكامل", placeholder: "اسم الكابتن" },
-                      { key: "phone", label: "رقم الواتس اب", placeholder: "01012345678" },
-                    ].map(f => (
-                      <div key={f.key} style={S.formGroup}>
-                        <label style={S.label}>{f.label}</label>
-                        <input value={form[f.key]} placeholder={f.placeholder} maxLength={f.key === "phone" ? 11 : undefined} onChange={e => setForm({ ...form, [f.key]: e.target.value })} style={S.input} />
-                      </div>
-                    ))}
                     <div style={S.formGroup}>
-                      <label style={S.label}>المدة</label>
-                      <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={S.input}>
-                        {[1, 2, 3].map(d => <option key={d} value={d}>{d} ساعة — {calculateBookingPrice(modal.time, d)} جنيه</option>)}
-                      </select>
+                      <label style={S.label}>الاسم</label>
+                      <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={S.input} />
                     </div>
-                    <div style={S.totalBox}>💰 الإجمالي: <strong>{calculateBookingPrice(modal.time, parseInt(form.duration))} جنيه</strong></div>
+                    <div style={S.formGroup}>
+                      <label style={S.label}>رقم الواتساب</label>
+                      <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={S.input} />
+                    </div>
                     {formError && <p style={S.errMsg}>{formError}</p>}
                     <div style={S.row}>
                       <button style={S.btnGray} onClick={() => setModal(null)}>إلغاء</button>
-                      <button style={S.btnGreen} onClick={handleBook}>✅ إرسال طلب الحجز</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {confirmModal && (
-                <div style={S.overlay} onClick={() => setConfirmModal(null)}>
-                  <div style={{ ...S.modalCard, maxWidth: 460 }} onClick={e => e.stopPropagation()}>
-                    <div style={S.waHeader}><span style={S.waIcon}>📲</span><h2 style={{ ...S.modalTitle, margin: 0 }}>تأكيد وإرسال واتساب</h2></div>
-                    <div style={S.waBubble}><pre style={S.waText}>{buildConfirmMsg(confirmModal)}</pre></div>
-                    <div style={{ ...S.row, marginTop: "20px" }}>
-                      <button style={S.btnGray} onClick={() => setConfirmModal(null)}>إلغاء</button>
-                      <button style={{ ...S.btnGreen, background: "#25d366" }} onClick={() => doConfirm(confirmModal)}>✅ تأكيد وفتح واتس اب</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {detailModal && (
-                <div style={S.overlay} onClick={() => setDetailModal(null)}>
-                  <div style={S.modalCard} onClick={e => e.stopPropagation()}>
-                    <h2 style={S.modalTitle}>📄 تفاصيل وإدارة الحجز</h2>
-                    <StatusBadge status={detailModal.status} />
-                    <table style={{ width: "100%", marginTop: 16, borderCollapse: "collapse" }}>
-                      <tbody>
-                        {[
-                          ["👤 الاسم", detailModal.name],
-                          ["📱 الهاتف", detailModal.phone],
-                          ["📅 التاريخ", formatDate(detailModal.date)],
-                          ["⏰ الوقت", detailModal.time],
-                          ["⏱ المدة", `${detailModal.duration} ساعة`],
-                          ["💰 المبلغ", `${detailModal.price} جنيه`],
-                          ["💵 الدفع", detailModal.paid ? "مدفوع ✅" : "لم يُدفع بعد 🔴"],
-                        ].map(([k, v]) => (
-                          <tr key={k}>
-                            <td style={S.dtKey}>{k}</td>
-                            <td style={S.dtVal}>{v}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div style={{ ...S.row, marginTop: 20, flexWrap: "wrap", gap: 8 }}>
-                      {detailModal.status === "pending" && <button style={{ ...S.btnGreen, background: "#25d366", flex: "none" }} onClick={() => setConfirmModal(detailModal)}>📲 تأكيد + واتس اب</button>}
-                      {detailModal.status === "confirmed" && <button style={{ ...S.btnGreen, background: "#1d4ed8", flex: "none" }} onClick={() => { openWA(detailModal.phone, buildReminderMsg(detailModal)); setDetailModal(null); }}>📲 إرسال تذكير</button>}
-                      <button style={{ ...S.btnGray, background: detailModal.paid ? "#374151" : "#0369a1", color: "#fff" }} onClick={() => togglePaid(detailModal.id, detailModal.paid)}>{detailModal.paid ? "↩ إلغاء الدفع" : "💵 تسجيل دفع"}</button>
-                      {detailModal.status !== "cancelled" && <button style={{ ...S.btnGray, background: "#7f1d1d", color: "#fca5a5" }} onClick={() => cancelBooking(detailModal.id)}>🚫 إلغاء الحجز</button>}
-                      <button style={S.btnGray} onClick={() => setDetailModal(null)}>إغلاق</button>
+                      <button style={S.btnGreen} onClick={handleBook}>✅ إرسال</button>
                     </div>
                   </div>
                 </div>
@@ -525,74 +345,46 @@
         }
 
         const S = {
-          root:           { minHeight: "100vh", background: "#0f172a", fontFamily: "Tahoma,sans-serif", direction: "rtl", color: "#f1f5f9", display: "flex", flexDirection: "column" },
+          root: { minHeight: "100vh", background: "#0f172a", fontFamily: "Tahoma,sans-serif", direction: "rtl", color: "#f1f5f9", display: "flex", flexDirection: "column" },
           contentWrapper: { flex: 1 },
-          header:         { background: "#1e293b", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e", position: "sticky", top: 0, zIndex: 100 },
-          logo:           { fontSize: 22, fontWeight: 800, color: "#22c55e" },
-          logoutBtn:      { padding: "6px 12px", background: "#7f1d1d", color: "#fca5a5", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: "bold" },
-          toast:          { position: "fixed", top: 72, left: "50%", transform: "translateX(-50%)", color: "#0f172a", padding: "12px 28px", borderRadius: 10, fontWeight: 700, zIndex: 999, fontSize: 15, whiteSpace: "nowrap", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" },
-          page:           { maxWidth: 820, margin: "0 auto", padding: "24px 16px" },
-          hero:           { textAlign: "center", padding: "28px 0 20px" },
-          heroTitle:      { fontSize: 28, fontWeight: 800, color: "#22c55e", margin: 0 },
-          heroSub:        { color: "#94a3b8", marginTop: 8, fontSize: 15 },
-          card:           { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 16, border: "1px solid #334155" },
-          label:          { display: "block", color: "#94a3b8", marginBottom: 6, fontSize: 13 },
-          dateInput:      { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "10px 14px", borderRadius: 8, fontSize: 15, width: "100%", boxSizing: "border-box" },
-          legendRow:      { display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" },
-          chip:           (color, bg) => ({ background: bg, color: color, borderRadius: 20, padding: "4px 14px", fontSize: 13, fontWeight: 600 }),
-          slotsGrid:      { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(110px,1fr))", gap: 10, marginBottom: 20 },
-          slot:           { padding: "12px 8px", borderRadius: 10, textAlign: "center", transition: "transform 0.1s" },
-          slotFree:       { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80", cursor: "pointer" },
-          slotBooked:     { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", cursor: "not-allowed", opacity: 0.7 },
-          slotTime:       { display: "block", fontWeight: 700, fontSize: 15 },
-          slotLabel:      { display: "block", fontSize: 11, marginTop: 3, opacity: 0.85 },
-          priceNote:      { textAlign: "center", color: "#64748b", fontSize: 14, background: "#1e293b", padding: "10px", borderRadius: "8px", border: "1px solid #334155" },
-          overlay:        { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 },
-          modalCard:      { background: "#1e293b", borderRadius: 16, padding: 28, width: "100%", maxWidth: 440, border: "1px solid #334155", maxHeight: "90vh", overflowY: "auto" },
-          modalTitle:     { margin: "0 0 8px", color: "#22c55e", fontSize: 20, fontWeight: 700 },
-          modalSub:       { color: "#94a3b8", fontSize: 14, marginTop: 0, marginBottom: 20 },
-          formGroup:      { marginBottom: 16 },
-          input:          { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "11px 14px", borderRadius: 8, fontSize: 15, width: "100%", boxSizing: "border-box", outline: "none" },
-          totalBox:       { background: "#0f172a", padding: 12, borderRadius: 8, textAlign: "center", fontSize: 16, color: "#f1f5f9", marginBottom: 16, border: "1px solid #22c55e" },
-          errMsg:         { color: "#f87171", fontSize: 13, margin: "0 0 12px", fontWeight: 600 },
-          row:            { display: "flex", gap: 12, justifyContent: "flex-end" },
-          btnGreen:       { background: "#22c55e", color: "#0f172a", border: "none", padding: "11px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 15, flex: 1 },
-          btnGray:        { background: "#334155", color: "#f1f5f9", border: "none", padding: "11px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontSize: 15 },
-          waHeader:       { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 },
-          waIcon:         { fontSize: 24 },
-          waBubble:       { background: "#0b141a", borderRadius: 12, padding: 14, border: "1px solid #25d366" },
-          waText:         { margin: 0, color: "#e9edef", fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap" },
-          dtKey:          { padding: "10px", color: "#94a3b8", borderBottom: "1px solid #334155", fontSize: 14, fontWeight: 600 },
-          dtVal:          { padding: "10px", color: "#f1f5f9", borderBottom: "1px solid #334155", fontSize: 14, textAlign: "left" },
-          bookingCard:    { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, border: "1px solid #334155", cursor: "pointer" },
-          bookingTop:     { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-          bookingId:      { color: "#22c55e", fontWeight: 700, fontSize: 14 },
-          bookingName:    { fontWeight: 700, fontSize: 16 },
-          bookingMid:     { display: "flex", gap: 16, color: "#94a3b8", fontSize: 13, marginBottom: 12, flexWrap: "wrap" },
-          bookingFooter:  { display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #334155", paddingTop: 10 },
-          detailLink:     { color: "#22c55e", fontSize: 13, fontWeight: 600 },
-          loginCard:      { background: "#1e293b", borderRadius: 16, padding: 32, maxWidth: 360, margin: "60px auto", textAlign: "center", border: "1px solid #334155" },
-          adminTop:       { display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 },
-          adminTitle:     { fontSize: 22, fontWeight: 800, margin: 0, color: "#22c55e" },
-          tabs:           { display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 },
-          tab:            { background: "#1e293b", color: "#94a3b8", border: "1px solid #334155", padding: "8px 16px", borderRadius: 8, cursor: "pointer", fontSize: 14, whiteSpace: "nowrap", fontWeight: 600 },
-          tabActive:      { background: "#22c55e", color: "#0f172a", border: "1px solid #22c55e", padding: "8px 16px", borderRadius: 8, cursor: "pointer", fontSize: 14, whiteSpace: "nowrap", fontWeight: 700 },
-          statsRow:       { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginBottom: 20 },
-          statCard:       { background: "#1e293b", border: "1px solid #334155", borderRadius: 10, padding: 14, textAlign: "center" },
-          statNum:        { fontSize: 22, fontWeight: 800, marginBottom: 4 },
-          statLbl:        { color: "#94a3b8", fontSize: 12, fontWeight: 600 },
-          empty:          { textAlign: "center", padding: "40px 20px", color: "#64748b", background: "#1e293b", borderRadius: 12, border: "1px dashed #334155", fontSize: 15 },
-          reportCard:     { background: "#1e293b", borderRadius: 12, padding: 20, border: "1px solid #334155" },
-          reportTitle:    { margin: "0 0 16px", fontSize: 16, fontWeight: 700 },
-          table:          { width: "100%", borderCollapse: "collapse", textAlign: "right", fontSize: 14 },
-          th:             { padding: "12px 10px", color: "#94a3b8", borderBottom: "2px solid #334155", fontWeight: 700 },
-          td:             { padding: "12px 10px", color: "#f1f5f9", borderBottom: "1px solid #334155" },
-          footer:         { textAlign: "center", padding: "20px", background: "#1e293b", color: "#64748b", fontSize: 14, borderTop: "1px solid #334155", marginTop: "auto" },
-          devName:        { color: "#22c55e", fontWeight: "bold", fontFamily: "monospace", fontSize: 15 }
+          header: { background: "#1e293b", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #22c55e" },
+          logo: { fontSize: 22, fontWeight: 800, color: "#22c55e" },
+          toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999 },
+          page: { maxWidth: 820, margin: "0 auto", padding: "24px 16px" },
+          hero: { textAlign: "center", padding: "20px 0" },
+          heroTitle: { fontSize: 28, fontWeight: 800, color: "#22c55e" },
+          heroSub: { color: "#94a3b8", marginTop: 8 },
+          card: { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 16 },
+          label: { display: "block", color: "#94a3b8", marginBottom: 6 },
+          dateInput: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "10px", borderRadius: 8, width: "100%" },
+          legendRow: { display: "flex", gap: 12, marginBottom: 16 },
+          chip: (color, bg) => ({ background: bg, color: color, borderRadius: 20, padding: "4px 14px", fontSize: 13 }),
+          slotsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(110px,1fr))", gap: 10 },
+          slot: { padding: "12px 8px", borderRadius: 10, textAlign: "center", cursor: "pointer" },
+          slotFree: { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80" },
+          slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", cursor: "not-allowed" },
+          slotTime: { display: "block", fontWeight: 700 },
+          slotLabel: { display: "block", fontSize: 11 },
+          overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
+          modalCard: { background: "#1e293b", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 },
+          modalTitle: { color: "#22c55e", fontSize: 20, marginBottom: 12 },
+          formGroup: { marginBottom: 14 },
+          input: { background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "10px", borderRadius: 8, width: "100%" },
+          errMsg: { color: "#f87171", fontSize: 13 },
+          row: { display: "flex", gap: 12, justifyContent: "flex-end" },
+          btnGreen: { background: "#22c55e", color: "#0f172a", border: "none", padding: "10px 20px", borderRadius: 8, fontWeight: 700, cursor: "pointer" },
+          btnGray: { background: "#334155", color: "#f1f5f9", border: "none", padding: "10px 20px", borderRadius: 8, cursor: "pointer" },
+          bookingCard: { background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, border: "1px solid #334155" },
+          bookingTop: { display: "flex", justifyContent: "space-between" },
+          bookingId: { color: "#22c55e", fontWeight: 700 },
+          bookingMid: { display: "flex", gap: 16, color: "#94a3b8", fontSize: 13, marginTop: 8 },
+          adminTop: { display: "flex", justifyContent: "space-between", marginBottom: 16 },
+          tabs: { display: "flex", gap: 8 },
+          tab: { background: "#1e293b", color: "#94a3b8", border: "none", padding: "6px 12px", borderRadius: 6 },
+          tabActive: { background: "#22c55e", color: "#0f172a", fontWeight: 700, padding: "6px 12px", borderRadius: 6 }
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
