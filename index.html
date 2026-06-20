@@ -7,18 +7,22 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- استدعاء النسخة المتوافقة كلياً مع المتصفح والـ CDN من سوبابيز -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
+    <!-- إضافة data-type="module" ليتوافق المتصفح مع معالجة الـ imports بنجاح -->
+    <script type="text/babel" data-type="module">
         const { useState, useEffect } = React;
 
         // 🔐 بيانات الربط الخاصة بمشروعك (آمنة ومحمية بـ RLS)
         const SUPABASE_URL = "https://wiugwyhpuhokhocttwbq.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_zzDhn9DNIAdjJLn8aNzKzA_4IapbzcL";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // جلب العميل بشكل صحيح من المتغير العام للمكتبة في المتصفح
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ⏰ مواعيد الحجوزات بنظام 12 ساعة من 1 ظهراً إلى 12 مساءً
         const TIME_SLOTS = [
@@ -381,7 +385,7 @@
                           )}
 
                           {adminTab === "pending" && (pendingList.length === 0 ? <div style={S.empty}>🎉 لا يوجد حجوزات في انتظار التأكيد لهذا اليوم</div> : pendingList.map(b => <BookingCard key={b.id} b={b} />))}
-                          {adminTab === "confirmed" && (confirmedList.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مؤكدة in هذا اليوم</div> : confirmedList.map(b => <BookingCard key={b.id} b={b} />))}
+                          {adminTab === "confirmed" && (confirmedList.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مؤكدة في هذا اليوم</div> : confirmedList.map(b => <BookingCard key={b.id} b={b} />))}
                           {adminTab === "all" && (adminDayAll.length === 0 ? <div style={S.empty}>لا يوجد حجوزات مسجلة في هذا اليوم</div> : [...adminDayAll].sort((a, b) => parseTo24Hour(a.time) - parseTo24Hour(b.time)).map(b => <BookingCard key={b.id} b={b} />))}
 
                           {adminTab === "report" && (
