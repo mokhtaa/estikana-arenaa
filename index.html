@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>استكانه أرينا - نظام الحجز الآمن</title>
+    <title>استكانه أرينا - لوحة التحكم المتقدمة</title>
     
     <style>
         body {
@@ -52,22 +52,6 @@
           } catch (e) { return 0; }
         }
 
-        function getPriceForSlot(timeStr) {
-          const hour24 = parseTo24Hour(timeStr);
-          return hour24 >= 13 && hour24 <= 18 ? 100 : 150;
-        }
-
-        function calculateBookingPrice(startTime, duration) {
-          const startIdx = TIME_SLOTS.indexOf(startTime);
-          if (startIdx === -1) return 0;
-          let total = 0;
-          for (let i = 0; i < duration; i++) {
-            const slotTime = TIME_SLOTS[startIdx + i];
-            if (slotTime) total += getPriceForSlot(slotTime);
-          }
-          return total;
-        }
-
         function todayStr() { return new Date().toISOString().split("T")[0]; }
         function currentMonthStr() { return new Date().toISOString().substring(0, 7); }
 
@@ -81,7 +65,7 @@
           statCard: (borderColor) => ({ background: "#1e293b", borderRadius: "12px", padding: "16px", borderRight: `5px solid ${borderColor}` }),
           
           adminRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" },
-          tabs: { display: "flex", gap: "8px" },
+          tabs: { display: "flex", gap: "8px", flexWrap: "wrap" },
           tabBtn: (active) => ({
             background: active ? "#22c55e" : "#1e293b", color: active ? "#0f172a" : "#9ca3af",
             border: active ? "1px solid #22c55e" : "1px solid #334155", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold"
@@ -99,62 +83,16 @@
           slotsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12 },
           slotFree: { background: "#14532d", border: "1px solid #22c55e", color: "#4ade80", padding: "16px 8px", borderRadius: 12, textAlign: "center", cursor: "pointer" },
           slotBooked: { background: "#2d1a1a", border: "1px solid #ef4444", color: "#f87171", padding: "16px 8px", borderRadius: 12, textAlign: "center", opacity: 0.8 },
+          slotDisabled: { background: "#334155", border: "1px solid #475569", color: "#94a3b8", padding: "16px 8px", borderRadius: 12, textAlign: "center", opacity: 0.6, cursor: "not-allowed" },
           toast: { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", color: "#fff", padding: "12px 28px", borderRadius: 10, zIndex: 999, fontWeight: 'bold' },
           footer: { background: "#111827", padding: "16px", textAlign: "center", borderTop: "1px solid #1e293b", color: "#94a3b8", fontSize: "14px", marginTop: "auto" },
           label: { display: "block", marginBottom: "8px", color: "#94a3b8", fontSize: "14px" },
 
-          modalOverlay: { 
-            position: "fixed", 
-            inset: 0, 
-            background: "rgba(15, 23, 42, 0.85)", 
-            backdropFilter: "blur(4px)", 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            zIndex: 1000,
-            padding: "16px"
-          },
-          modalCard: { 
-            background: "#1e293b", 
-            borderRadius: "16px", 
-            padding: "24px", 
-            width: "100%", 
-            maxWidth: "400px", 
-            border: "1px solid #334155",
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
-            boxSizing: "border-box"
-          },
-          modalTitle: {
-            margin: "0 0 20px 0",
-            fontSize: "20px",
-            fontWeight: "bold",
-            color: "#22c55e",
-            textAlign: "center"
-          },
-          modalInput: { 
-            width: "100%", 
-            background: "#0f172a", 
-            border: "1px solid #334155", 
-            color: "#f1f5f9", 
-            padding: "12px 16px", 
-            borderRadius: "8px", 
-            fontSize: "15px", 
-            marginBottom: "16px",
-            boxSizing: "border-box",
-            outline: "none"
-          },
-          modalBtn: {
-            width: "100%",
-            background: "#22c55e",
-            color: "#0f172a",
-            border: "none",
-            padding: "12px",
-            borderRadius: "8px",
-            fontWeight: "bold",
-            fontSize: "16px",
-            cursor: "pointer",
-            marginTop: "8px"
-          }
+          modalOverlay: { position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.85)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "16px" },
+          modalCard: { background: "#1e293b", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "400px", border: "1px solid #334155", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)", boxSizing: "border-box" },
+          modalTitle: { margin: "0 0 20px 0", fontSize: "20px", fontWeight: "bold", color: "#22c55e", textAlign: "center" },
+          modalInput: { width: "100%", background: "#0f172a", border: "1px solid #334155", color: "#f1f5f9", padding: "12px 16px", borderRadius: "8px", fontSize: "15px", marginBottom: "16px", boxSizing: "border-box", outline: "none" },
+          modalBtn: { width: "100%", background: "#22c55e", color: "#0f172a", border: "none", padding: "12px", borderRadius: "8px", fontWeight: "bold", fontSize: "16px", cursor: "pointer", marginTop: "8px" }
         };
 
         function App() {
@@ -175,8 +113,13 @@
           const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
           const [displayedReport, setDisplayedReport] = useState({ month: currentMonthStr(), total: 0 });
 
+          // داتا الإعدادات الديناميكية من الداتابيز
+          const [pricingConfig, setPricingConfig] = useState({ afternoon: 100, evening: 150 });
+          const [disabledSlots, setDisabledSlots] = useState([]); // تخزن المواعيد المغلقة مثل: ["2026-06-20|3:00 عصراً", "2026-06-21|ALL"]
+
           useEffect(() => {
             fetchBookings();
+            fetchAdminConfigs();
             const channels = supabaseClient.channel('realtime-bookings')
               .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { fetchBookings(); })
               .subscribe();
@@ -190,7 +133,7 @@
 
           useEffect(() => {
             if (bookings.length > 0) generateMonthlyReport();
-          }, [bookings]);
+          }, [bookings, selectedMonth]);
 
           useEffect(() => {
             const params = new URLSearchParams(window.location.search);
@@ -209,6 +152,35 @@
             setLoading(false);
           }
 
+          // جلب أسعار ومواعيد الإغلاق من جدول الأدمين
+          async function fetchAdminConfigs() {
+            try {
+              const { data, error } = await supabaseClient.from('admin_config').select('*');
+              if (!error && data) {
+                const pricing = data.find(c => c.key === 'pricing_config');
+                const disabled = data.find(c => c.key === 'disabled_slots');
+                if (pricing) setPricingConfig(JSON.parse(pricing.value));
+                if (disabled) setDisabledSlots(JSON.parse(disabled.value));
+              }
+            } catch (e) { console.error("Error fetching configs:", e); }
+          }
+
+          function getPriceForSlot(timeStr) {
+            const hour24 = parseTo24Hour(timeStr);
+            return hour24 >= 13 && hour24 <= 18 ? pricingConfig.afternoon : pricingConfig.evening;
+          }
+
+          function calculateBookingPrice(startTime, duration) {
+            const startIdx = TIME_SLOTS.indexOf(startTime);
+            if (startIdx === -1) return 0;
+            let total = 0;
+            for (let i = 0; i < duration; i++) {
+              const slotTime = TIME_SLOTS[startIdx + i];
+              if (slotTime) total += getPriceForSlot(slotTime);
+            }
+            return total;
+          }
+
           async function handleLogin(e) {
             e.preventDefault();
             setLoginError("");
@@ -222,9 +194,9 @@
               if (!error && data && data.value === passwordInput) {
                 setIsAuthorized(true);
                 sessionStorage.setItem("admin_logged", "true");
-                showToast(" أهلاً بك يا كابتن! تم تسجيل الدخول بنجاح.");
+                showToast("🔓 أهلاً بك يا كابتن! تم تسجيل الدخول بنجاح.");
               } else {
-                setLoginError(" كلمة المرور غير صحيحة!");
+                setLoginError("❌ كلمة المرور غير صحيحة!");
               }
             } catch (err) {
               setLoginError("خطأ في الاتصال بقاعدة البيانات.");
@@ -240,6 +212,48 @@
           function showToast(msg, type = "success") {
             setToast({ msg, type });
             setTimeout(() => setToast({ msg: "", type: "success" }), 4000);
+          }
+
+          // حفظ تعديلات الإغلاق أو الأسعار في السوبابيز
+          async function saveConfigToDatabase(key, valueObj) {
+            const { error } = await supabaseClient
+              .from('admin_config')
+              .update({ value: JSON.stringify(valueObj) })
+              .eq('key', key);
+            if (!error) {
+              showToast("💾 تم حفظ الإعدادات وتحديث الموقع فوراً!");
+              fetchAdminConfigs();
+            } else {
+              showToast("❌ فشل حفظ الإعدادات", "warn");
+            }
+          }
+
+          // قفل أو فتح ساعة معينة
+          function toggleSlotDisable(date, time) {
+            const targetKey = `${date}|${time}`;
+            let updated = [...disabledSlots];
+            if (updated.includes(targetKey)) {
+              updated = updated.filter(x => x !== targetKey);
+            } else {
+              updated.push(targetKey);
+            }
+            setDisabledSlots(updated);
+            saveConfigToDatabase('disabled_slots', updated);
+          }
+
+          // قفل أو فتح يوم بالكامل
+          function toggleDayDisable(date) {
+            const targetKey = `${date}|ALL`;
+            let updated = [...disabledSlots];
+            if (updated.includes(targetKey)) {
+              updated = updated.filter(x => x !== targetKey);
+            } else {
+              // مسح أي ساعات فردية مقفولة في نفس اليوم منعاً للتكرار وضف قفل اليوم كامل
+              updated = updated.filter(x => !x.startsWith(date));
+              updated.push(targetKey);
+            }
+            setDisabledSlots(updated);
+            saveConfigToDatabase('disabled_slots', updated);
           }
 
           async function handleBook() {
@@ -260,7 +274,7 @@
             if (error) { showToast("حدث خطأ في الشبكة", "warn"); } 
             else {
               setModal(null); setForm({ name: "", phone: "", duration: "1" });
-              showToast(" تم إرسال طلب الحجز بنجاح!");
+              showToast("✅ تم إرسال طلب الحجز بنجاح!");
               fetchBookings();
             }
           }
@@ -270,10 +284,9 @@
             if (error) {
               showToast("فشل تحديث الحالة", "warn");
             } else {
-              showToast(newStatus === "confirmed" ? " تم تأكيد الحجز" : "تم الإلغاء");
+              showToast(newStatus === "confirmed" ? "🎉 تم تأكيد الحجز" : "❌ تم الإلغاء");
               if (newStatus === "confirmed") {
-                const message = `أهلاً بك كابتن ${booking.name}  من ملعب استكانه أرينا، تم تأكيد حجزك بنجاح.\n📅 التاريخ: ${booking.date}\n⏰ الساعة: ${booking.time}\n⏱️ المدة: ${booking.duration} ساعة\n💰 الحساب الإجمالي: ${booking.price} جنيه\nبرجاء الحضور قبل الموعد بـ 10 دقائق �
-نتمنى لك وقت ممتع! �! ⚽`;
+                const message = `أهلاً بك كابتن ${booking.name} 🏟️ من ملعب استكانه أرينا، تم تأكيد حجزك بنجاح.\n📅 التاريخ: ${booking.date}\n⏰ الساعة: ${booking.time}\n⏱️ المدة: ${booking.duration} ساعة\n💰 الحساب الإجمالي: ${booking.price} جنيه\nتنورنا في أي وقت! ⚽`;
                 const whatsappUrl = `https://wa.me/2${booking.phone}?text=${encodeURIComponent(message)}`;
                 window.open(whatsappUrl, '_blank');
               }
@@ -316,6 +329,9 @@
           const paidRevenue = confirmedList.filter(b => b.paid).reduce((sum, b) => sum + Number(b.price || 0), 0);
           const pendingRevenue = pendingList.reduce((sum, b) => sum + Number(b.price || 0), 0);
 
+          // فحص هل اليوم الحالي مقفول تماماً
+          const isDayDisabled = disabledSlots.includes(`${selectedDate}|ALL`);
+
           return (
             <div style={S.root}>
               <header style={S.header}>
@@ -324,6 +340,7 @@
                 </div>
                 <div style={{display: 'flex', gap: '15px'}}>
                   <a href="?view=booking" style={{color: '#22c55e', textDecoration:'none', fontWeight:'bold'}}>صفحة الحجز الرئيسي</a>
+                  <a href="?view=admin" style={{color: '#fbbf24', textDecoration:'none', fontWeight:'bold'}}>لوحة الإدارة</a>
                   {isAuthorized && <button onClick={handleLogout} style={{background:'none', border:'none', color:'#ef4444', cursor:'pointer', fontWeight:'bold', fontSize:'14px'}}>تسجيل الخروج 🚪</button>}
                 </div>
               </header>
@@ -342,21 +359,38 @@
                       <label style={S.label}>📅 اختار يوم الحجز</label>
                       <input type="date" value={selectedDate} min={todayStr()} onChange={e => setSelectedDate(e.target.value)} style={S.dateInput} />
                     </div>
-                    <div style={S.slotsGrid}>
-                      {TIME_SLOTS.map(time => {
-                        const isBooked = bookedSlots.has(time);
-                        const slotPrice = getPriceForSlot(time); /* 💰 حساب سعر الساعة الحالية */
-                        return (
-                          <div key={time} onClick={() => !isBooked && setModal({ time })} style={isBooked ? S.slotBooked : S.slotFree}>
-                            <span style={{ fontWeight: "bold" }}>{time}</span>
-                            {/* 💡 هنا قمنا بإضافة طباعة السعر لكل ساعة بوضوح داخل الزرار */}
-                            <span style={{display:'block', fontSize:12, marginTop: 4, opacity: 0.9}}>
-                              {isBooked ? "محجوز 🚫" : `${slotPrice} جنيه 💰`}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+
+                    {isDayDisabled ? (
+                      <div style={{background: '#2d1a1a', border: '1px solid #ef4444', color: '#f87171', padding: '30px', borderRadius: '12px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px'}}>
+                        🔒 نعتذر منك، الملعب مغلق بالكامل في هذا اليوم بأمر من الإدارة.
+                      </div>
+                    ) : (
+                      <div style={S.slotsGrid}>
+                        {TIME_SLOTS.map(time => {
+                          const isBooked = bookedSlots.has(time);
+                          const isSlotDisabled = disabledSlots.includes(`${selectedDate}|${time}`);
+                          const slotPrice = getPriceForSlot(time);
+                          
+                          if (isSlotDisabled) {
+                            return (
+                              <div key={time} style={S.slotDisabled}>
+                                <span style={{ fontWeight: "bold" }}>{time}</span>
+                                <span style={{display:'block', fontSize:12, marginTop: 4}}>مغلق 🔒</span>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div key={time} onClick={() => !isBooked && setModal({ time })} style={isBooked ? S.slotBooked : S.slotFree}>
+                              <span style={{ fontWeight: "bold" }}>{time}</span>
+                              <span style={{display:'block', fontSize:12, marginTop: 4, opacity: 0.9}}>
+                                {isBooked ? "محجوز 🚫" : `${slotPrice} جنيه 💰`}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   !isAuthorized ? (
@@ -375,6 +409,7 @@
                     </div>
                   ) : (
                     <div style={S.page}>
+                      {/* لوحة المؤشرات المالية */}
                       <div style={S.statsGrid}>
                         <div style={S.statCard("#22c55e")}>
                           <span style={{color: '#94a3b8', fontSize: '13px', display:'block'}}>إجمالي الإيرادات المؤكدة</span>
@@ -390,6 +425,63 @@
                         </div>
                       </div>
 
+                      {/* 🛠️ قسم التحكم الجديد والمطور: الأسعار والمواعيد */}
+                      <div style={{...S.card, background: '#111827', border: '1px solid #fbbf24', padding: '20px', marginBottom: '24px'}}>
+                        <h3 style={{margin: '0 0 16px 0', color: '#fbbf24', fontSize: '18px'}}>⚙️ لوحة التحكم في المواعيد والأسعار الحالية</h3>
+                        
+                        {/* أ) التحكم في الأسعار */}
+                        <div style={{display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '20px', borderBottom: '1px solid #1e293b', paddingBottom: '20px'}}>
+                          <div style={{flex: 1, minWidth: '150px'}}>
+                            <label style={S.label}>💰 سعر الفترة الصباحية (1 ظهراً - 6 مساءً):</label>
+                            <input type="number" value={pricingConfig.afternoon} onChange={e => setPricingConfig({...pricingConfig, afternoon: Number(e.target.value)})} style={S.dateInput} />
+                          </div>
+                          <div style={{flex: 1, minWidth: '150px'}}>
+                            <label style={S.label}>💰 سعر الفترة المسائية (7 مساءً - 12 ليلاً):</label>
+                            <input type="number" value={pricingConfig.evening} onChange={e => setPricingConfig({...pricingConfig, evening: Number(e.target.value)})} style={S.dateInput} />
+                          </div>
+                          <div style={{display: 'flex', alignItems: 'flex-end'}}>
+                            <button onClick={() => saveConfigToDatabase('pricing_config', pricingConfig)} style={{background: '#fbbf24', color: '#0f172a', border: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'}}>حفظ الأسعار الجديدة 💵</button>
+                          </div>
+                        </div>
+
+                        {/* ب) التحكم في قفل المواعيد والأيام */}
+                        <div>
+                          <label style={S.label}>📅 اختر اليوم لتعديل حالته وقفل الساعات:</label>
+                          <div style={{display: 'flex', gap: '12px', marginBottom: '16px'}}>
+                            <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} style={{...S.dateInput, maxWidth: '250px'}} />
+                            <button onClick={() => toggleDayDisable(selectedDate)} style={{background: isDayDisabled ? '#22c55e' : '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'}}>
+                              {isDayDisabled ? "🔓 فتح اليوم بالكامل" : "🔒 إغلاق اليوم بالكامل"}
+                            </button>
+                          </div>
+
+                          {!isDayDisabled && (
+                            <div>
+                              <label style={S.label}>⏱️ اضغط على أي ساعة لقفلها أو فتحها في هذا اليوم بشكل مخصص:</label>
+                              <div style={S.slotsGrid}>
+                                {TIME_SLOTS.map(time => {
+                                  const isSlotDisabled = disabledSlots.includes(`${selectedDate}|${time}`);
+                                  return (
+                                    <div 
+                                      key={time} 
+                                      onClick={() => toggleSlotDisable(selectedDate, time)} 
+                                      style={{
+                                        padding: '12px 8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px',
+                                        background: isSlotDisabled ? '#7f1d1d' : '#1e293b',
+                                        border: isSlotDisabled ? '1px solid #ef4444' : '1px solid #475569',
+                                        color: isSlotDisabled ? '#f87171' : '#f1f5f9'
+                                      }}
+                                    >
+                                      {time} <span style={{display:'block', fontSize:11, marginTop:2}}>{isSlotDisabled ? "مغلق 🔒" : "شغال 🟢"}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* تقارير الأرباح الشهرية المخصصة */}
                       <div style={{...S.card, background: '#111827', marginBottom: '24px', padding: '20px'}}>
                         <h3 style={{margin: '0 0 16px 0', color: '#22c55e', fontSize: '17px'}}>📊 ميزه تقارير الأرباح الشهرية المخصصة:</h3>
                         <div style={{display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px'}}>
@@ -404,6 +496,7 @@
                         </div>
                       </div>
 
+                      {/* التبويبات وإدارة الحجوزات */}
                       <div style={S.adminRow}>
                         <div style={S.tabs}>
                           <button style={S.tabBtn(adminTab === "pending")} onClick={() => setAdminTab("pending")}>⌛ الانتظار ({pendingList.length})</button>
@@ -468,27 +561,13 @@
                     <h3 style={S.modalTitle}>📝 طلب حجز جديد</h3>
                     
                     <div style={{marginBottom: "4px", fontSize: "14px", color: "#94a3b8"}}>اسم الزبون:</div>
-                    <input 
-                      value={form.name} 
-                      onChange={e => setForm({ ...form, name: e.target.value })} 
-                      style={S.modalInput} 
-                      placeholder="اكتب اسم الكابتن" 
-                    />
+                    <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={S.modalInput} placeholder="اكتب اسم الكابتن" />
                     
                     <div style={{marginBottom: "4px", fontSize: "14px", color: "#94a3b8"}}>رقم الموبايل:</div>
-                    <input 
-                      value={form.phone} 
-                      onChange={e => setForm({ ...form, phone: e.target.value })} 
-                      style={S.modalInput} 
-                      placeholder="01xxxxxxxxx" 
-                    />
+                    <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={S.modalInput} placeholder="01xxxxxxxxx" />
                     
                     <div style={{marginBottom: "4px", fontSize: "14px", color: "#94a3b8"}}>مدة الحجز:</div>
-                    <select 
-                      value={form.duration} 
-                      onChange={e => setForm({ ...form, duration: e.target.value })} 
-                      style={S.modalInput}
-                    >
+                    <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={S.modalInput}>
                       <option value="1">ساعة واحدة ⏱️</option>
                       <option value="2">ساعتين (٢ ساعة) ⏱️</option>
                       <option value="3">3 ساعات ⏱️</option>
@@ -496,15 +575,13 @@
                     
                     {formError && <p style={{color: '#ef4444', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0', textAlign: 'center'}}>{formError}</p>}
                     
-                    <button style={S.modalBtn} onClick={handleBook}>
-                      إرسال الطلب وتأكيد الحجز 
-                    </button>
+                    <button style={S.modalBtn} onClick={handleBook}>إرسال الطلب وتأكيد الحجز 🚀</button>
                   </div>
                 </div>
               )}
 
               <footer style={S.footer}>
-                <div>تطوير بواسطة : <strong style={{color: '#22c55e'}}>Mokhtar Emad</strong>  © ٢٠٢٦ استكانه أرينا.</div>
+                <div>تطوير بواسطة كابتن: <strong style={{color: '#22c55e'}}>Mokhtar Emad</strong> 🚀 © ٢٠٢٦ استكانه أرينا.</div>
               </footer>
             </div>
           );
