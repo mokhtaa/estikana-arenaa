@@ -109,7 +109,7 @@
           const [formError, setFormError] = useState("");
           const [toast, setToast] = useState({ msg: "", type: "success" });
           const [adminTab, setAdminTab] = useState("pending");
-          
+          const [isSubmitting, setIsSubmitting] = useState(false);
           const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
           const [displayedReport, setDisplayedReport] = useState({ month: currentMonthStr(), total: 0 });
 
@@ -256,10 +256,13 @@
             saveConfigToDatabase('disabled_slots', updated);
           }
 
-          async function handleBook() {
+         async function handleBook() {
             setFormError("");
             if (!form.name.trim()) { setFormError("الاسم مطلوب"); return; }
             if (!form.phone.match(/^01[0-9]{9}$/)) { setFormError("رقم الهاتف غير صحيح"); return; }
+            
+            // إضافة سطر القفل هنا
+            setIsSubmitting(true); 
             
             const dur = parseInt(form.duration);
             const calculatedPrice = calculateBookingPrice(modal.time, dur);
@@ -271,6 +274,10 @@
             };
 
             const { error } = await supabaseClient.from('bookings').insert([newBooking]);
+            
+            // فتح الزرار تاني بعد ما العملية تخلص
+            setIsSubmitting(false); 
+            
             if (error) { showToast("حدث خطأ في الشبكة", "warn"); } 
             else {
               setModal(null); setForm({ name: "", phone: "", duration: "1" });
@@ -574,7 +581,13 @@
                     
                     {formError && <p style={{color: '#ef4444', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0', textAlign: 'center'}}>{formError}</p>}
                     
-                    <button style={S.modalBtn} onClick={handleBook}>إرسال الطلب وتأكيد الحجز </button>
+                    <button 
+                      style={{...S.modalBtn, opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer'}} 
+                      onClick={handleBook}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "⌛ جاري إرسال طلبك..." : "إرسال الطلب وتأكيد الحجز 🚀"}
+                    </button>
                   </div>
                 </div>
               )}
